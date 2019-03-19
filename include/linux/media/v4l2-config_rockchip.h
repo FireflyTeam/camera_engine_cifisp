@@ -22,7 +22,8 @@
 #endif
 
 #define CAMERA_STRLEN   32
-#define CAMERA_METADATA_LEN (2*PAGE_SIZE)
+#define CAMERA_METADATA_LEN (4*PAGE_SIZE)
+#define SUBDEV_NUM_MAX 10
 
 #define VALID_FR_EXP_T_INDEX  0
 #define VALID_FR_EXP_G_INDEX  1
@@ -30,6 +31,7 @@
 #define SENSOR_CONFIG_NUM   4
 #define SENSOR_READ_MODE    0
 #define SENSOR_WRITE_MODE   1
+#define LIGHT_NUM_MAX 5
 
 #define CSI2_DT_YUV420_8b	(0x18)
 #define CSI2_DT_YUV420_10b	(0x19)
@@ -41,6 +43,27 @@
 #define CSI2_DT_RAW8	(0x2A)
 #define CSI2_DT_RAW10	(0x2B)
 #define CSI2_DT_RAW12	(0x2C)
+
+enum light_id_s {
+  LIGHT0 = 0,
+  LIGHT1,
+  LIGHT2,
+  LIGHT3,
+  LIGHT4,
+  LIGHT_ID_INVAILD = 0xff
+};
+
+enum light_power_s {
+  LIGHT_ON = 0,
+  LIGHT_OFF,
+  LIGHT_INVALID = 0xffff
+};
+
+enum light_ctl_mode_s {
+  LIGHT_MANUAL_CTL = 0,
+  LIGHT_AUTO_CTL,
+  LIGHT_ALTERNATE_CTL
+};
 
 /* Sensor resolution specific data for AE calculation.*/
 struct isp_supplemental_sensor_mode_data {
@@ -70,6 +93,10 @@ struct isp_supplemental_sensor_mode_data {
   unsigned short gain;
   unsigned char max_exp_gain_h;
   unsigned char max_exp_gain_l;
+  int exp_time_l;
+  unsigned short gain_l;
+  int exp_time_s;
+  unsigned short gain_s;
 };
 
 
@@ -109,6 +136,17 @@ struct sensor_reg_rw_s {
   unsigned short data;
 };
 
+struct isp_boot_stream_info {
+	unsigned int count;
+	unsigned int width;
+	unsigned int height;
+	unsigned int format;
+	unsigned int rese_addr;
+	unsigned int rese_size;
+	unsigned int exp[2];
+	unsigned int gain[4];
+};
+
 struct flash_timeinfo_s {
   struct timeval preflash_start_t;
   struct timeval preflash_end_t;
@@ -124,17 +162,53 @@ struct frame_timeinfo_s {
 };
 
 struct sensor_metadata_s {
-  unsigned int exp_time;
-  unsigned int gain;
+	unsigned int exp_time_l;
+	unsigned int exp_time;
+	unsigned int exp_time_s;
+	unsigned int gain_l;
+	unsigned int gain;
+	unsigned int gain_s;
 };
 
 struct v4l2_buffer_metadata_s {
-  unsigned int frame_id;
-  struct frame_timeinfo_s frame_t;
-  struct flash_timeinfo_s flash_t;
-  struct sensor_metadata_s sensor;
-  unsigned char isp[CAMERA_METADATA_LEN - 512];
+	unsigned int frame_id;
+	unsigned int lights_stat;
+	struct frame_timeinfo_s frame_t;
+	struct flash_timeinfo_s flash_t;
+	struct sensor_metadata_s sensor;
+	unsigned char isp[CAMERA_METADATA_LEN-512];
 };
 
+struct light_ctl_auto_para_s {
+  bool is_exclusive;
+  unsigned short req_delay;
+  unsigned short req_num;
+};
+
+struct light_ctl_alter_para_s {
+  enum light_id_s alter_id;
+  unsigned short req_delay;
+  unsigned short req_num;
+};
+
+struct light_req_s {
+  enum light_id_s id;
+  enum light_power_s power;
+  enum light_ctl_mode_s ctl_mode;
+  union {
+    struct light_ctl_auto_para_s auto_para;
+    struct light_ctl_alter_para_s alter_para;
+  };
+};
+
+struct subdev_light_infos {
+	char light_name[64];
+	enum light_id_s light_ctl;
+};
+
+struct subdev_light_info {
+	unsigned int num_light;
+	struct subdev_light_infos light_info[LIGHT_NUM_MAX];
+};
 #endif
 

@@ -28,11 +28,22 @@
   _IOR('v', BASE_VIDIOC_PRIVATE + 1, struct sensor_config_info_s)
 #define RK_VIDIOC_SENSOR_REG_ACCESS \
   _IOWR('v', BASE_VIDIOC_PRIVATE + 2, struct sensor_reg_rw_s)
+#define RK_VIDIOC_BOOT_STREAM_INFO \
+  _IOR('v', BASE_VIDIOC_PRIVATE + 3, struct isp_boot_stream_info)
+#define RK_VIDIOC_LIGHT_CONTROL \
+  _IOWR('v', BASE_VIDIOC_PRIVATE + 4, struct light_req_s)
+#define RK_VIDIOC_QUERY_LIGHT_INFO \
+  _IOWR('v', BASE_VIDIOC_PRIVATE + 5, struct subdev_light_info)
 
 #define V4L2_CID_USER_RK_BASE (V4L2_CID_USER_BASE + 0x1080)
 #define RK_V4L2_CID_VBLANKING (V4L2_CID_USER_RK_BASE + 1)
 #define RK_V4L2_CID_GAIN_PERCENT (V4L2_CID_USER_RK_BASE + 2)
 #define RK_V4L2_CID_AUTO_FPS (V4L2_CID_USER_RK_BASE + 3)
 #define RK_V4L2_CID_VTS (V4L2_CID_USER_RK_BASE + 4)
+#define RK_V4L2_CID_CLS_EXP (V4L2_CID_USER_RK_BASE + 5)
+#define RK_V4L2_CID_L_EXP (V4L2_CID_USER_RK_BASE + 6)
+#define RK_V4L2_CID_L_GAIN (V4L2_CID_USER_RK_BASE + 7)
+#define RK_V4L2_CID_S_EXP (V4L2_CID_USER_RK_BASE + 8)
+#define RK_V4L2_CID_S_GAIN (V4L2_CID_USER_RK_BASE + 9)
 
 #endif

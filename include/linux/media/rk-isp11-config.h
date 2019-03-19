@@ -118,6 +118,26 @@
 #define CIFISP_STAT_AFM_FIN		(1 << 2)
 #define CIFISP_STAT_HIST		(1 << 3)
 
+#define CIFISP_HDRAE_MSGID		0x00000001
+#define CIFISP_HDRAE_HIST_BIN_NUM	(1 << 8)
+#define CIFISP_HDRAE_MAXFRAMES		3
+#define CIFISP_HDRAE_MAXGRIDITEMS	(15 * 15)
+#define CIFISP_HDRAE_SFREGION0_NUM (5*15)
+#define CIFISP_HDRAE_SFREGION1_NUM (10*3)
+#define CIFISP_HDRAE_SFREGION2_NUM (10*3)
+#define CIFISP_HDRAE_SFREGION3_NUM (10*9)
+
+#define CIFISP_HDRAE_1_FRAME_OFFSET	2
+#define CIFISP_HDRAE_2_FRAME_OFFSET	(369 + CIFISP_HDRAE_1_FRAME_OFFSET)
+#define CIFISP_HDRAE_3_FRAME_OFFSET	(369 + CIFISP_HDRAE_2_FRAME_OFFSET)
+#define CIFISP_HDRAE_NEW_DATA_START      (369+CIFISP_HDRAE_3_FRAME_OFFSET)
+#define CIFISP_HDRAE_OEDATA_OFFSET		(369+CIFISP_HDRAE_3_FRAME_OFFSET)
+#define CIFISP_HDRAE_SFREGION0_OFFSET	(CIFISP_HDRAE_OEDATA_OFFSET+3)
+#define CIFISP_HDRAE_SFREGION1_OFFSET	(CIFISP_HDRAE_SFREGION0_OFFSET+CIFISP_HDRAE_SFREGION0_NUM)
+#define CIFISP_HDRAE_SFREGION2_OFFSET	(CIFISP_HDRAE_SFREGION1_OFFSET+CIFISP_HDRAE_SFREGION1_NUM)
+#define CIFISP_HDRAE_SFREGION3_OFFSET	(CIFISP_HDRAE_SFREGION2_OFFSET+CIFISP_HDRAE_SFREGION2_NUM)
+#define CIFISP_HDRAE_DYDATA_OFFSET		(CIFISP_HDRAE_SFREGION3_OFFSET+CIFISP_HDRAE_SFREGION3_NUM)
+
 enum cifisp_histogram_mode {
 	CIFISP_HISTOGRAM_MODE_DISABLE         = 0,
 	CIFISP_HISTOGRAM_MODE_RGB_COMBINED    = 1,
@@ -226,6 +246,70 @@ struct cifisp_ae_stat {
 	struct cifisp_bls_meas_val bls_val; /*available wit exposure results*/
 };
 
+struct cifisp_hdrae_hist_meas_res {
+	unsigned int hist_bin[CIFISP_HDRAE_HIST_BIN_NUM];
+};
+
+struct cifisp_hdrae_mean_meas_res {
+	unsigned short y_meas[CIFISP_HDRAE_MAXGRIDITEMS];
+};
+
+struct cifisp_hdrae_oneframe_result {
+	struct cifisp_hdrae_hist_meas_res hist_meas;
+	struct cifisp_hdrae_mean_meas_res mean_meas;
+};
+/*zlj add struct*/
+typedef struct cifisp_hdrae_sframe_regionmatrix_s
+{
+	unsigned int Region0[CIFISP_HDRAE_SFREGION0_NUM];
+	unsigned int Region1[CIFISP_HDRAE_SFREGION1_NUM];
+	unsigned int Region2[CIFISP_HDRAE_SFREGION2_NUM];
+	unsigned int Region3[CIFISP_HDRAE_SFREGION3_NUM];
+}cifisp_hdrae_sframe_regionmatrix_t;
+
+struct cifisp_hdrae_OE_meas_res{
+	unsigned int OE_Pixel;
+	unsigned int SumHistPixel;
+	unsigned int SframeMaxLuma; //zlj add
+	struct cifisp_hdrae_sframe_regionmatrix_s SfRegionMatrix;
+};
+
+
+struct cifisp_hdrae_DRIndex_res{
+	unsigned int fNormalIndex;
+	unsigned int fLongIndex;
+};
+
+/*zlj add end*/
+
+struct sensor_hdrmetadata_s {
+	unsigned int exp_time_l;
+	unsigned int exp_time;
+	unsigned int exp_time_s;
+	unsigned int gain_l;
+	unsigned int gain;
+	unsigned int gain_s;
+};
+
+
+struct cifisp_hdrae_result {
+	unsigned int mesg_id;
+	unsigned int mesg_size;
+	struct cifisp_hdrae_oneframe_result oneframe[CIFISP_HDRAE_MAXFRAMES];
+	/*zlj still no add*/
+	struct cifisp_hdrae_OE_meas_res OEMeasRes; //zlj add
+	struct cifisp_hdrae_DRIndex_res DRIndexRes;//zlj add
+	struct sensor_hdrmetadata_s sensor;
+	unsigned int lgmean;
+	unsigned short gammaOut[CIFISP_GAMMA_OUT_MAX_SAMPLES];
+};
+
+struct cifisp_dspmsg_head {
+	unsigned int mesg_total_size;
+	unsigned int frame_id;
+	unsigned int mesg_count;
+};
+
 struct cifisp_af_meas_val {
 	unsigned int sum;
 	unsigned int lum;
@@ -266,6 +350,7 @@ struct cifisp_subdev_stat {
 struct cifisp_stat {
 	struct cifisp_awb_stat awb;
 	struct cifisp_ae_stat ae;
+	struct cifisp_hdrae_result hdr_ae;
 	struct cifisp_af_stat af;
 	struct cifisp_hist_stat hist;
 };
@@ -586,3 +671,4 @@ struct cifisp_isp_metadata {
 	struct cifisp_stat_buffer meas_stat;
 };
 #endif
+

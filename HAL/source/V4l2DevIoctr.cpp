@@ -511,6 +511,48 @@ int V4L2DevIoctr::accessSensor(struct sensor_reg_rw_s* sensor_rw) {
   return ret;
 }
 
+int V4L2DevIoctr::reqLgtFrm(struct light_req_s* lgt) {
+  int ret = 0;
+
+  ret = ioctl(mDevFp, RK_VIDIOC_LIGHT_CONTROL, lgt);
+  if (ret < 0) {
+    LOGE("ERR(%s):  RK_VIDIOC_STRUCT_LIGHT_CONTROL(0x%x) failed, err: %s\n",
+         __func__,
+         RK_VIDIOC_LIGHT_CONTROL,
+         strerror(errno));
+  }
+
+  return ret;
+}
+
+int V4L2DevIoctr::getLightInfos(struct subdev_light_info* lgt_infos) {
+  int ret = 0;
+
+  ret = ioctl(mDevFp, RK_VIDIOC_QUERY_LIGHT_INFO, lgt_infos);
+  if (ret < 0) {
+    LOGE("ERR(%s):  RK_VIDIOC_STRUCT_LIGHT_CONTROL(0x%x) failed, err: %s\n",
+         __func__,
+         RK_VIDIOC_QUERY_LIGHT_INFO,
+         strerror(errno));
+  }
+
+  return ret;
+}
+
+int V4L2DevIoctr::getBootStreamInfo(struct isp_boot_stream_info* info) {
+  int ret = 0;
+
+  ret = ioctl(mDevFp, RK_VIDIOC_BOOT_STREAM_INFO, info);
+  if (ret < 0) {
+    LOGE("ERR(%s):  RK_VIDIOC_BOOT_STREAM_INFO(0x%x) failed, err: %s\n",
+         __func__,
+         RK_VIDIOC_BOOT_STREAM_INFO,
+         strerror(errno));
+  }
+
+  return ret;
+}
+
 //param
 int V4L2DevIoctr::setStrmPara(struct v4l2_streamparm* parm) {
   int ret;

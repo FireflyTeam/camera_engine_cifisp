@@ -219,6 +219,8 @@ class CamIsp1xCtrItf: public CamIspCtrItf {
   /* ae stable count */
   unsigned int mAeStableCnt;
   bool mRun3AThd;
+  /* hdr mode */
+  bool_t mHdrMode;
  private:
 
 };

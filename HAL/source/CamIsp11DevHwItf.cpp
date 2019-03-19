@@ -679,10 +679,10 @@ bool CamIsp11DevHwItf::initHw(int inputId) {
 
     }
 
+    initApiItf(mISPDev.get());
     mAfSupport = (bool_t)camera_module.af_support;
     mInputId = inputId;
     mCapThdRun = false;
-	initApiItf(mISPDev.get());
     m_flag_init = 1;
     if (ret == false) {
 err:
@@ -781,37 +781,98 @@ int CamIsp11DevHwItf::configIsp(
   return 0;
 }
 
-int CamIsp11DevHwItf::setExposure(unsigned int vts, unsigned int exposure, unsigned int gain, unsigned int gain_percent) {
-  int ret;
-  struct v4l2_ext_control exp_gain[4];
+int CamIsp11DevHwItf::setExposure(struct HAL_ISP_Set_Exp_s* exp) {
+  int ret, idx = 0;
+  struct v4l2_ext_control exp_gain[9];
   struct v4l2_ext_controls ctrls;
 
-  exp_gain[0].id = V4L2_CID_EXPOSURE;
+  if (!exp->hdr_enable) {
+    if (exp->cls_exp_before) {
+      exp_gain[idx].id = RK_V4L2_CID_CLS_EXP;
+      exp_gain[idx++].value = 0;
+    }
 
-  exp_gain[0].value = exposure;
-  exp_gain[1].id = V4L2_CID_GAIN;
-  exp_gain[1].value = gain;
-  exp_gain[2].id = RK_V4L2_CID_GAIN_PERCENT;
-  exp_gain[2].value = gain_percent;
-  exp_gain[3].id = RK_V4L2_CID_VTS;
-  exp_gain[3].value = vts;
+    exp_gain[idx].id = V4L2_CID_EXPOSURE;
+    exp_gain[idx++].value = exp->exposure;
+    exp_gain[idx].id = V4L2_CID_GAIN;
+    exp_gain[idx++].value = exp->gain;
+    exp_gain[idx].id = RK_V4L2_CID_GAIN_PERCENT;
+    exp_gain[idx++].value = exp->gain_percent;
+    exp_gain[idx].id = RK_V4L2_CID_VTS;
+    exp_gain[idx++].value = exp->vts;
 
-  ctrls.count = 4;
-  ctrls.ctrl_class = V4L2_CTRL_CLASS_USER;
-  ctrls.controls = exp_gain;
-  ctrls.reserved[0] = 0;
-  ctrls.reserved[1] = 0;
+    ctrls.count = idx;
+    ctrls.ctrl_class = V4L2_CTRL_CLASS_USER;
+    ctrls.controls = exp_gain;
+    ctrls.reserved[0] = 0;
+    ctrls.reserved[1] = 0;
 
-  ret = ioctl(m_cam_fd_overlay, VIDIOC_S_EXT_CTRLS, &ctrls);
+    ret = ioctl(m_cam_fd_overlay, VIDIOC_S_EXT_CTRLS, &ctrls);
 
-  if (ret < 0) {
-    LOGE("ERR(%s):set of  AE seting to sensor config failed! err: %s\n",
-         __func__,
-         strerror(errno));
-    return ret;
+    if (ret < 0) {
+      LOGE("ERR(%s):set of  AE seting to sensor config failed! err: %s\n",
+           __func__,
+           strerror(errno));
+      return ret;
+    } else {
+      mExposureSequence = exp_gain[1].value;
+      TRACE_D(1, "%s(%d): mExposureSequence: %d", __FUNCTION__, __LINE__, mExposureSequence);
+    }
   } else {
-    mExposureSequence = exp_gain[0].value;
-    TRACE_D(1, "%s(%d): mExposureSequence: %d", __FUNCTION__, __LINE__, mExposureSequence);
+    if (exp->cls_exp_before) {
+      exp_gain[idx].id = RK_V4L2_CID_CLS_EXP;
+      exp_gain[idx].value = 0;
+    } else {
+      idx = -1;
+    }
+
+    exp_gain[++idx].id = V4L2_CID_EXPOSURE;
+    exp_gain[idx].value = exp->m_regtime;
+    memcpy((void *)exp_gain[idx].actual_exp, &exp->m_time, sizeof(exp->m_time));
+
+    exp_gain[++idx].id = V4L2_CID_GAIN;
+    exp_gain[idx].value = exp->m_reggain;
+    memcpy((void *)exp_gain[idx].actual_exp, &exp->m_gain, sizeof(exp->m_gain));
+
+    exp_gain[++idx].id = RK_V4L2_CID_GAIN_PERCENT;
+    exp_gain[idx].value = exp->gain_percent;
+
+    exp_gain[++idx].id = RK_V4L2_CID_VTS;
+    exp_gain[idx].value = exp->vts;
+
+    exp_gain[++idx].id = RK_V4L2_CID_L_EXP;
+    exp_gain[idx].value = exp->l_regtime;
+    memcpy((void *)exp_gain[idx].actual_exp, &exp->l_time, sizeof(exp->l_time));
+
+    exp_gain[++idx].id = RK_V4L2_CID_L_GAIN;
+    exp_gain[idx].value = exp->l_reggain;
+    memcpy((void *)exp_gain[idx].actual_exp, &exp->l_gain, sizeof(exp->l_gain));
+
+    exp_gain[++idx].id = RK_V4L2_CID_S_EXP;
+    exp_gain[idx].value = exp->s_regtime;
+    memcpy((void *)exp_gain[idx].actual_exp, &exp->s_time, sizeof(exp->s_time));
+
+    exp_gain[++idx].id = RK_V4L2_CID_S_GAIN;
+    exp_gain[idx].value = exp->s_reggain;
+    memcpy((void *)exp_gain[idx].actual_exp, &exp->s_gain, sizeof(exp->s_gain));
+
+    ctrls.count = idx + 1;
+    ctrls.ctrl_class = V4L2_CTRL_CLASS_USER;
+    ctrls.controls = exp_gain;
+    ctrls.reserved[0] = 0;
+    ctrls.reserved[1] = 0;
+
+    ret = ioctl(m_cam_fd_overlay, VIDIOC_S_EXT_CTRLS, &ctrls);
+
+    if (ret < 0) {
+      LOGE("ERR(%s):set of  AE seting to sensor config failed! err: %s\n",
+          __func__,
+          strerror(errno));
+      return ret;
+    } else {
+      mExposureSequence = exp_gain[0].value;
+      TRACE_D(1, "%s(%d): mExposureSequence: %d", __FUNCTION__, __LINE__, mExposureSequence);
+    }
   }
 
   return ret;

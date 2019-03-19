@@ -325,22 +325,26 @@ int CamHwItf::setFocusPos(int position) {
   return ret;
 }
 
-int CamHwItf::setExposure(unsigned int vts, unsigned int exposure, unsigned int gain, unsigned int gain_percent) {
-  int ret;
-  struct v4l2_ext_control exp_gain[4];
+int CamHwItf::setExposure(struct HAL_ISP_Set_Exp_s* exp) {
+  int ret, idx = 0;
+  struct v4l2_ext_control exp_gain[5];
   struct v4l2_ext_controls ctrls;
 
-  exp_gain[0].id = V4L2_CID_EXPOSURE;
+  if (exp->cls_exp_before) {
+    exp_gain[idx].id = RK_V4L2_CID_CLS_EXP;
+    exp_gain[idx++].value = 0;
+  }
 
-  exp_gain[0].value = exposure;
-  exp_gain[1].id = V4L2_CID_GAIN;
-  exp_gain[1].value = gain;
-  exp_gain[2].id = RK_V4L2_CID_GAIN_PERCENT;
-  exp_gain[2].value = gain_percent;
-  exp_gain[3].id = RK_V4L2_CID_VTS;
-  exp_gain[3].value = vts;
+  exp_gain[idx].id = V4L2_CID_EXPOSURE;
+  exp_gain[idx++].value = exp->exposure;
+  exp_gain[idx].id = V4L2_CID_GAIN;
+  exp_gain[idx++].value = exp->gain;
+  exp_gain[idx].id = RK_V4L2_CID_GAIN_PERCENT;
+  exp_gain[idx++].value = exp->gain_percent;
+  exp_gain[idx].id = RK_V4L2_CID_VTS;
+  exp_gain[idx++].value = exp->vts;
 
-  ctrls.count = 4;
+  ctrls.count = idx;
   ctrls.ctrl_class = V4L2_CTRL_CLASS_USER;
   ctrls.controls = exp_gain;
   ctrls.reserved[0] = 0;
@@ -354,7 +358,7 @@ int CamHwItf::setExposure(unsigned int vts, unsigned int exposure, unsigned int 
          strerror(errno));
     return ret;
   } else {
-    mExposureSequence = exp_gain[0].value;
+    mExposureSequence = exp_gain[1].value;
     TRACE_D(1, "%s(%d): mExposureSequence: %d", __FUNCTION__, __LINE__, mExposureSequence);
   }
 
@@ -572,6 +576,73 @@ int CamHwItf::getSensorReg(struct HAL_ISP_Sensor_Reg_s& reg) {
   reg.reg_data = sensor_rw.data;
   reg.reg_addr_len = sensor_rw.reg_addr_len + 1;
   reg.reg_data_len = sensor_rw.reg_data_len + 1;
+}
+
+int CamHwItf::reqLgtFrm(struct HAL_LIGHT_REQ& req) {
+  struct light_req_s lgt_req;
+
+  if (req.id > LIGHT_NUM_MAX) {
+    ALOGE("%s: light id: %d error!", __func__, lgt_req.id);
+    return -1;
+  }
+
+  lgt_req.id = static_cast<enum light_id_s>(req.id);
+  lgt_req.power = static_cast<enum light_power_s>(req.power);
+  lgt_req.ctl_mode = static_cast<enum light_ctl_mode_s>(req.ctl_mode);
+  if (lgt_req.ctl_mode == LIGHT_AUTO_CTL) {
+    lgt_req.auto_para.is_exclusive = req.auto_para.is_exclusive;
+    lgt_req.auto_para.req_delay = req.auto_para.req_delay;
+    lgt_req.auto_para.req_num = req.auto_para.req_num;
+  } else if (lgt_req.ctl_mode == LIGHT_ALTERNATE_CTL) {
+    lgt_req.alter_para.alter_id = (enum light_id_s )req.alter_para.alter_id;
+    lgt_req.alter_para.req_delay = req.alter_para.req_delay;
+    lgt_req.alter_para.req_num = req.alter_para.req_num;
+  }
+
+  if (mSpDev->reqLgtFrm(&lgt_req)) {
+    ALOGV("%s: request struct light frame error!", __func__);
+    return -1;
+  }
+}
+
+int CamHwItf::getLightInfos(struct rk_cams_subdev_light_info& light_infos) {
+  struct subdev_light_info lgt_infos;
+
+  if (mSpDev->getLightInfos(&lgt_infos)) {
+    ALOGE("%s: request struct light frame error!", __func__);
+    return -1;
+  }
+
+  light_infos.num_light = lgt_infos.num_light;
+  for (int i = 0; i < light_infos.num_light; i++) {
+      light_infos.light_info[i].light_ctl =
+        static_cast<enum HAL_LIGHT_ID>(lgt_infos.light_info[i].light_ctl);
+      memcpy(light_infos.light_info[i].light_name,
+             lgt_infos.light_info[i].light_name,
+             sizeof(lgt_infos.light_info[i].light_name));
+
+      ALOGV("xuhf-light-debug: light[%d]: name: %s, ctl: %d",
+        i,
+        light_infos.light_info[i].light_name,
+        light_infos.light_info[i].light_ctl);
+  }
+  return 0;
+}
+
+int CamHwItf::getBootStream(struct HAL_ISP_Boot_Stream_s& info) {
+  struct isp_boot_stream_info boot_info;
+
+  if (mSpDev->getBootStreamInfo(&boot_info)) {
+    ALOGE("%s: access sensor register error!", __func__);
+    return -1;
+  }
+
+  info.count = boot_info.count;
+  info.format = boot_info.format;
+  info.width = boot_info.width;
+  info.height = boot_info.height;
+  info.rese_addr = boot_info.rese_addr;
+  info.rese_size = boot_info.rese_size;
 }
 
 int CamHwItf::startCap(struct HAL_ISP_Cap_Req_s& req) {

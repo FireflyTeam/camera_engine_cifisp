@@ -26,7 +26,7 @@
 #include <common/cam_types.h>
 
 #include <cam_calibdb/cam_calibdb_api.h>
-using namespace tinyxml2;
+using namespace rktinyxml2;
 
 struct sensor_calib_info {
   CamCalibDbMetaData_t meta_data;
@@ -66,7 +66,7 @@ class CalibDb {
   }
 
   bool CreateCalibDb(const XMLElement*);
-  bool CreateCalibDb(const char* device);
+  bool CreateCalibDb(const char* device, enum IQDATA_LOAD_MODE mode = IQDATA_LOAD_XMLFILE);
   struct sensor_calib_info* GetCalibDbInfo() {
     return &(m_CalibInfo);
   }

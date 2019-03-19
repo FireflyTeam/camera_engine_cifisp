@@ -36,6 +36,11 @@ extern "C"
 {
 #endif
 
+enum IQDATA_LOAD_MODE {
+  IQDATA_LOAD_XMLFILE,
+  IQDATA_LOAD_BINDATA,
+  IQDATA_DUMP_BINDATA
+};
 
 /*******************************************************************************
  * @brief   Handle to a CamCalibDb instance.
@@ -66,6 +71,17 @@ void ClearDySetpointList(List* l);
  *
  *****************************************************************************/
 void ClearExpSeparateList(List* l);
+
+/*****************************************************************************/
+/**
+ * @brief   This function clears AEC TargetMaxluma list.
+ *
+ * @param   l         Head to exposure separate list.
+ *
+ * @return  void
+ *
+ *****************************************************************************/
+void ClearOverExpControlList(List* l);
 
 /*****************************************************************************/
 /**
@@ -1327,7 +1343,17 @@ RESULT CamCalibDbGetCproc
     CamCprocProfile_t**   ppAddCproc
 );
 
+RESULT CamCalibDbDumpFile
+(
+    CamCalibDbHandle_t  hCamCalibDb,
+    const char *dump_path
+);
 
+RESULT CamCalibDbLoadFile
+(
+    CamCalibDbHandle_t*  hCamCalibDb,
+    const char* CamCalibDbIqData
+);
 
 #ifdef __cplusplus
 }

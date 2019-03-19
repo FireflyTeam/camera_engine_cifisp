@@ -48,6 +48,7 @@ extern "C"
 #endif
 
 #define AEC_AFPS_MASK (1 << 0)
+#define AEC_EFFECT_FNUM 3
 
 /*****************************************************************************/
 /**
@@ -56,6 +57,15 @@ extern "C"
 /*****************************************************************************/
 #define CIFISP_AE_MEAN_MAX 25
 #define CIFISP_HIST_BIN_N_MAX 16
+/*zlj add*/
+#define LockAE_NO	(3)
+#define CIFISP_HDRAE_LOGHISTBIN_NUM 100
+#define CIFISP_HDRAE_HISTBIN_NUM (1<<8)
+#define CIFISP_HDRAE_GRIDITEMS (15*15)
+//#define CIFISP_HDRAE_SFREGION0_NUM (15*5)
+//#define CIFISP_HDRAE_SFREGION1_NUM (10*3)
+//#define CIFISP_HDRAE_SFREGION2_NUM (10*3)
+//#define CIFISP_HDRAE_SFREGION3_NUM (10*9)
 
 typedef struct AecContext_s* AeHandle_t;     /**< handle to AEC context */
 
@@ -145,8 +155,8 @@ typedef struct AecConfig_s {
 
   Cam5x5UCharMatrix_t         GridWeights;
   Cam5x5UCharMatrix_t         NightGridWeights;
-  CamerIcIspHistMode_t  HistMode;
-  AecMeasuringMode_t    meas_mode;
+  CamerIcIspHistMode_t        HistMode;
+  AecMeasuringMode_t          meas_mode;
 
   float                       SetPoint;                   /**< set point to hit by the ae control system */
   float                       ClmTolerance;
@@ -157,21 +167,21 @@ typedef struct AecConfig_s {
   Cam6x1FloatMatrix_t         EcmTimeDot;
   Cam6x1FloatMatrix_t         EcmGainDot;
   Cam6x1FloatMatrix_t         FpsFixTimeDot;
-  uint8_t				      isFpsFix;
-  uint8_t				      FpsSetEnable;
+  uint8_t                     isFpsFix;
+  uint8_t                     FpsSetEnable;
   AecDampingMode_t            DampingMode;              /**< damping mode */
   AecSemMode_t                SemMode;                  /**< scene evaluation mode */
   AecEcmFlickerPeriod_t       EcmFlickerSelect;         /**< flicker period selection */
-  uint8_t                         StepSize;
-  float                           GainFactor;
-  float                           GainBias;
-  float                           LinePeriodsPerField;
-  float                           PixelClockFreqMHZ;
-  float                           PixelPeriodsPerLine;
-  float                           ApiSetFps;
+  uint8_t                     StepSize;
+  float                       GainFactor;
+  float                       GainBias;
+  float                       LinePeriodsPerField;
+  float                       PixelClockFreqMHZ;
+  float                       PixelPeriodsPerLine;
+  float                       ApiSetFps;
   /* gain range */
 
-  uint32_t				  GainRange_size;
+  uint32_t            GainRange_size;
   float               *pGainRange;
   float               TimeFactor[4];
 
@@ -189,6 +199,11 @@ typedef struct AecConfig_s {
   float         DON_Night2Day_Fac_th; // yamasaki
   uint8_t       DON_Bouncing_th;
 
+  //zlj add for LockAE
+  uint8_t             LockAE_enable;
+  Cam3x1FloatMatrix_t GainValue;
+  Cam3x1FloatMatrix_t TimeValue;
+
   AecInterAdjust_t IntervalAdjStgy;
 
   CamCalibAecExpSeparate_t *pExpSeparate[LIGHT_MODE_MAX];
@@ -196,6 +211,7 @@ typedef struct AecConfig_s {
   CamCalibAecNLSC_t NLSC_config;
   CamCalibAecBacklight_t backLightConf;
   CamCalibAecHist2Hal_t hist2Hal;
+  CamCalibAecHdrCtrl_t HdrCtrl;
 
   enum LIGHT_MODE LightMode;
   
@@ -212,9 +228,55 @@ typedef struct AecConfig_s {
  * @brief   AEC Module Hardware statistics structure
  *
  *****************************************************************************/
+ 
+/*zlj add*/
+typedef struct Hdrae_DRIndex_res
+{
+  uint32_t NormalIndex;
+  uint32_t LongIndex;
+} Hdrae_DRIndex_res_t;
+typedef struct Hdrae_OE_meas_res
+{
+  uint32_t OE_Pixel;
+  uint32_t SumHistPixel;
+  uint32_t SframeMaxLuma;
+  //struct Hdrae_sframe_regionmatrix_s SfRegionMatrix;
+} Hdrae_OE_meas_res_t;
+
+typedef struct Hdrae_stat_s
+{
+  unsigned int hdr_hist_bins[CIFISP_HDRAE_HISTBIN_NUM];
+  unsigned short hdr_exp_mean[CIFISP_HDRAE_GRIDITEMS];
+} Hdrae_stat_t;
+
+typedef struct Hdr_sensor_metadata_s {
+  unsigned int exp_time_l;
+  unsigned int exp_time;
+  unsigned int exp_time_s;
+  unsigned int gain_l;
+  unsigned int gain;
+  unsigned int gain_s;
+} Hdr_sensor_metadata_t;
+
+typedef struct Hdr_sensor_expdata_s {
+  float exp_time_l;
+  float exp_time;
+  float exp_time_s;
+  float gain_l;
+  float gain;
+  float gain_s;
+} Hdr_sensor_expdata_t;
+
 typedef struct AecStat_s {
   unsigned char  exp_mean[CIFISP_AE_MEAN_MAX];
   unsigned int hist_bins[CIFISP_HIST_BIN_N_MAX];
+  /*zlj add*/
+  struct Hdrae_stat_s oneframe[3];
+  struct Hdrae_DRIndex_res fDRIndex;
+  struct Hdrae_OE_meas_res fOEMeasRes;
+  struct Hdr_sensor_metadata_s sensor;
+  struct Hdr_sensor_expdata_s curexp;
+  unsigned int lgmean;
 } AecStat_t;
 
 
@@ -230,6 +292,11 @@ typedef struct ExpSet_s {
   float Exposure;
   float Gain;
   float Time;
+
+  int RegHdrGains[3];
+  int RegHdrTime[3];
+  float HdrGains[3];
+  float HdrIntTimes[3];
 } ExpSet_t;
 
 /*****************************************************************************/
@@ -245,19 +312,21 @@ typedef struct AecResult_s {
   int regGain;
   float InputExposure;
   float Exposure;
-  int regAssistTime[2];
-  int regAssistGain[2];
-  float AssistExposure[2];
-  float AssistGain[2];
-  float AssistIntegrationTime[2];
   float PixelClockFreqMHZ;
   float PixelPeriodsPerLine;
   float LinePeriodsPerField;
 
+  /*add for smoother HdrAE*/
+  int regAssistTime[AEC_EFFECT_FNUM-1][3];
+  int regAssistGain[AEC_EFFECT_FNUM-1][3];
+  float AssistExposure[AEC_EFFECT_FNUM-1][3];
+  float AssistGain[AEC_EFFECT_FNUM-1][3];
+  float AssistIntegrationTime[AEC_EFFECT_FNUM-1][3];
+
   AecMeasuringMode_t meas_mode;
   struct Cam_Win meas_win;
   unsigned int actives;
-  unsigned char GridWeights[CIFISP_AE_MEAN_MAX];
+  unsigned char GridWeights[CIFISP_HDRAE_GRIDITEMS];//zlj modify
   uint8_t stepSize;
   CamerIcIspHistMode_t HistMode;
   float gainFactor;
@@ -267,6 +336,7 @@ typedef struct AecResult_s {
   enum LIGHT_MODE DON_LightMode;
   float DON_Fac;
   float MeanLuma;
+  float HdrMeanLuma[3];
   float MaxGainRange;
   uint8_t Night_Trigger;
   uint8_t Night_Mode;
@@ -276,8 +346,23 @@ typedef struct AecResult_s {
   float MaxGain;
   float MinIntegrationTime;
   float MaxIntegrationTime;
+  /*zlj add for hdr result*/
+  bool IsHdrMode;
+  float DCG_Ratio;
+  float NormalExpRatio;
+  float LongExpRatio;
+  int RegHdrGains[3];
+  int RegHdrTime[3];
+  float HdrGains[3];
+  float HdrIntTimes[3];
+  float DarkROI;
+  float OEROI;
+  int   DarkNum;
+  int   OENum;
+  float TargetDarkLuma;
+  float TargetOELuma;
 
-  ExpSet_t exp_set[3];
+  ExpSet_t exp_set[AEC_EFFECT_FNUM];
   int exp_set_cnt;
 } AecResult_t;
 
@@ -370,6 +455,47 @@ RESULT AecGetResults
 RESULT AecRelease
 (
     AeHandle_t pAecCtx
+);
+
+/*****************************************************************************/
+/**
+ * @brief   This function get the ratio of meanluma & exposure to check environmental luminance fluctuation
+ *
+ * @param
+ *
+ * @return  Return the result of the function call.
+ * @retval  RET_SUCCESS
+ * @retval  RET_FAILURE
+ * @retval  RET_OUTOFRANGE
+ *
+ *****************************************************************************/
+RESULT AecGetEnvLgt
+(
+    AeHandle_t pAecCtx,
+    float expTime,
+    float gain,
+    AecStat_t* ae_stat,
+    float* EnvLgt
+);
+
+/*****************************************************************************/
+/**
+ * @brief   This function get the ratio of meanluma & exposure to check environmental luminance fluctuation
+ *
+ * @param
+ *
+ * @return  Return the result of the function call.
+ * @retval  RET_SUCCESS
+ * @retval  RET_FAILURE
+ * @retval  RET_OUTOFRANGE
+ *
+ *****************************************************************************/
+RESULT AecHdrGetEnvLgt
+(
+    AeHandle_t pAecCtx,
+    AecStat_t* ae_stat,
+    float* EnvLgt1,
+    float* EnvLgt2
 );
 
 #ifdef __cplusplus

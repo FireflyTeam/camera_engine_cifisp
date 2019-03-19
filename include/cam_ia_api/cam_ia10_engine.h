@@ -15,9 +15,10 @@ class CamIA10Engine: public CamIA10EngineItf {
   CamIA10Engine();
   virtual ~CamIA10Engine();
 
-  virtual RESULT initStatic(char* aiqb_data_file);
+  virtual RESULT initStatic(char* aiqb_data_file, enum IQDATA_LOAD_MODE mode = IQDATA_LOAD_XMLFILE);
   virtual RESULT initDynamic(struct CamIA10_DyCfg* cfg);
   virtual RESULT setStatistics(struct CamIA10_Stats* stats);
+  virtual RESULT getHdrMode(bool_t *mode);
 
   virtual RESULT runAEC();
   virtual RESULT getAECResults(AecResult_t* result);
@@ -119,6 +120,10 @@ class CamIA10Engine: public CamIA10EngineItf {
 
   bool_t  mWdrEnabledState;
   enum LIGHT_MODE mLightMode;
+
+  float mEnvLgt;
+  float mEnvLgt1, mEnvLgt2;
+  bool_t mHdrEnabled;
 
  private:
   RESULT initAEC();

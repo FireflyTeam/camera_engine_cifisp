@@ -1,5 +1,5 @@
-#ifndef RKISP_X3A_INTERFACE
-#define RKISP_X3A_INTERFACE
+#ifndef CIFISP_X3A_INTERFACE
+#define CIFISP_X3A_INTERFACE
 
 #ifdef __cplusplus
 extern "C" {
@@ -149,8 +149,8 @@ int rkisp_setAntiBandMode(void* &engine, enum HAL_AE_FLK_MODE flkMode);
 int rkisp_setAeBias(void* &engine, int aeBias);
 int rkisp_setFps(void* &engine, HAL_FPS_INFO_t fps);
 int rkisp_getFps(void* &engine, HAL_FPS_INFO_t &fps);
-int rkisp_setAeWindow(void* &engine, int left_hoff, int top_voff, int right_width, int bottom_height);
-int rkisp_getAeWindow(void* &engine, int &left_hoff, int &top_voff, int &right_width, int &bottom_height);
+int rkisp_setAeWindow(void* &engine, int left_hoff, int top_voff, int right_hoff, int bottom_voff);
+int rkisp_getAeWindow(void* &engine, int &left_hoff, int &top_voff, int &right_hoff, int &bottom_voff);
 int rkisp_setExposureMeterMode(void* &engine, enum HAL_AE_METERING_MODE aeMeterMode);
 int rkisp_getExposureMeterMode(void* &engine, enum HAL_AE_METERING_MODE& aeMeterMode);
 int rkisp_setExposureMeterCoeff(void* &engine, unsigned char meter_coeff[]);

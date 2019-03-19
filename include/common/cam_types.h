@@ -513,6 +513,7 @@ typedef char                        CamDsp3dnrProfileName_t[CAM_DSP_3DNR_PROFILE
 #define CAM_NEW_DSP_3DNR_PROFILE_NAME        ( 20U )
 typedef char                        CamNewDsp3dnrProfileName_t[CAM_NEW_DSP_3DNR_PROFILE_NAME];
 
+
 #define CAM_FILTER_PROFILE_NAME        ( 20U )
 typedef char                        CamFilterProfileName_t[CAM_FILTER_PROFILE_NAME];
 
@@ -975,6 +976,7 @@ typedef struct CamDsp3DNRSettingProfile_s {
 
 } CamDsp3DNRSettingProfile_t;
 
+
 typedef struct CamNewDsp3DNRYnrParams_s {
 	uint32_t enable_ynr;        // Set to 1 by default
 	uint32_t enable_tnr;        // Set to 1 by default, it will be disabled when enable_ynr=1
@@ -1010,10 +1012,12 @@ typedef struct CamNewDsp3DNRProfile_s {
 	uint32_t enable_dpc;        // Set to 1 by default, enable DSP dpc algorithm
 	uint32_t reserved[4];
 
-	uint32_t enable_3dnr;;			// whole 3dnr function enable bits;
+	uint32_t enable_3dnr;			// whole 3dnr function enable bits;
 	int ArraySize;
 	float *pgain_Level;
 }CamNewDsp3DNRProfile_t;
+
+
 
 
 /*****************************************************************************/
@@ -1039,7 +1043,7 @@ typedef struct CamDpfProfile_s {
   uint16_t ADPFEnable;
 
   List FilterList;
-  List Dsp3DNRSettingProfileList;
+  List Dsp3DNRSettingProfileList; 
   List newDsp3DNRProfileList;
 } CamDpfProfile_t;
 
@@ -1410,6 +1414,18 @@ typedef enum CamECMMode_e {
 
 /*****************************************************************************/
 /**
+ * @brief   mode type of Hdr-AEC
+ *
+ ****************************************************************************/
+typedef enum CamHdrMode_e {
+  CAM_HDR_MODE_INVALID    = 0,        /* invalid (only used for initialization) */
+  CAM_HDR_MODE_STAGGER   = 1,     /* HDR STAGGER MODE (independent integration time value) */
+  CAM_HDR_MODE_DCG    = 2,        /* HDR DCG MODE (only one integration time value) */
+  CAM_HDR_MODE_MAX
+} CamHdrMode_t;
+
+/*****************************************************************************/
+/**
  * @brief   Enumeration type to configure CamerIC ISP exposure measuring mode.
  *
  *****************************************************************************/
@@ -1444,6 +1460,20 @@ typedef struct CamCalibAecGainRange_s{
 	float *pGainRange;
 }CamCalibAecGainRange_t;
 
+typedef struct CamCalibAecOverExpControl_s{
+  void*                    p_next;                    /**< for adding to a list */
+  CamDynamicSetpointName_t      name;                       /**name */
+  float K1;
+  float K2;
+  float K3;
+  float OEC_Pdf_max;
+  float OEC_Pdf_th;
+  float OEC_Tolerance_max;
+  float* pGainLevel;
+  float* pDyMaxLuma;
+  int	array_size;
+}CamCalibAecOverExpControl_t;
+
 typedef struct CamCalibAecDynamicSetpoint_s{
   void*                    p_next;                    /**< for adding to a list */
   CamDynamicSetpointName_t      name;                       /**name */
@@ -1453,12 +1483,15 @@ typedef struct CamCalibAecDynamicSetpoint_s{
   int	array_size;
 }CamCalibAecDynamicSetpoint_t;
 
-
 typedef struct CamCalibAecExpSeparate_s{
   void*                    p_next;                    /**< for adding to a list */
   CamExpSeparateName_t      name;                       /**name */
   Cam6x1FloatMatrix_t ecmTimeDot;
   Cam6x1FloatMatrix_t ecmGainDot;
+  Cam6x1FloatMatrix_t ecmLTimeDot;
+  Cam6x1FloatMatrix_t ecmSTimeDot;
+  Cam6x1FloatMatrix_t ecmLGainDot;
+  Cam6x1FloatMatrix_t ecmSGainDot;
 }CamCalibAecExpSeparate_t;
 
 typedef struct CamCalibAecNLSC_s{
@@ -1487,6 +1520,24 @@ typedef struct CamCalibAecHist2Hal_s{
   uint8_t   lowHistBinTh;
 }CamCalibAecHist2Hal_t;
 
+typedef struct CamCalibAecHdrCtrl_s{
+  uint8_t   Enable;
+  uint8_t	Mode;
+  uint8_t	FrameNum;
+  float	    DCG_Ratio;
+  Cam6x1FloatMatrix_t Lgains;
+  Cam6x1FloatMatrix_t LExpLevel;
+  Cam6x1FloatMatrix_t LSetPoint;
+  Cam6x1FloatMatrix_t TargetDarkROILuma;
+  Cam6x1FloatMatrix_t Sgains;
+  Cam6x1FloatMatrix_t SExpLevel;
+  Cam6x1FloatMatrix_t TargetOELuma;
+  Cam6x1FloatMatrix_t SSetPoint;
+  float 	OETolerance;
+  float		OELumaDistTh;
+  Cam6x1FloatMatrix_t 	M2S_Ratio;
+  Cam6x1FloatMatrix_t 	L2M_Ratio;
+}CamCalibAecHdrCtrl_t;
 
 /*****************************************************************************/
 /**
@@ -1495,7 +1546,7 @@ typedef struct CamCalibAecHist2Hal_s{
 /*****************************************************************************/
 typedef struct CamCalibAecGlobal_s {
   float                   SetPoint;                   /**< set point to hit by the ae control system */
-  float					  NightSetPoint;
+  float                   NightSetPoint;
   float                   ClmTolerance;
   float                   DampOverStill;              /**< damping coefficient for still image mode */
   float                   DampUnderStill;             /**< damping coefficient for still image mode */
@@ -1521,9 +1572,8 @@ typedef struct CamCalibAecGlobal_s {
   CamCalibAecGainRange_t  GainRange;
   float                   TimeFactor[4];
   Cam6x1FloatMatrix_t     FpsFixTimeDot;
-  uint8_t				  isFpsFix;
-  uint8_t				  FpsSetEnable;
-  
+  uint8_t                 isFpsFix;
+  uint8_t                 FpsSetEnable;
 
   float         AOE_Enable;
   float         AOE_Max_point;
@@ -1532,7 +1582,12 @@ typedef struct CamCalibAecGlobal_s {
   float         AOE_Y_Min_th;
   float         AOE_Step_Inc;
   float         AOE_Step_Dec;
-  
+  //zlj add for LockAE
+  uint8_t       LockAE_enable;
+  Cam3x1FloatMatrix_t GainValue;
+  Cam3x1FloatMatrix_t TimeValue;
+  float         MeanLumaDistTh;
+
   uint8_t       DON_Night_Trigger;
   uint8_t       DON_Night_Mode;
   float         DON_Day2Night_Fac_th;
@@ -1543,9 +1598,11 @@ typedef struct CamCalibAecGlobal_s {
   
   List DySetpointList;
   List ExpSeparateList;
+  List OverExpControlList;
   CamCalibAecNLSC_t NLSC_config;
   CamCalibAecBacklight_t backLightConf;
   CamCalibAecHist2Hal_t hist2Hal;
+  CamCalibAecHdrCtrl_t HdrCtrl;
 
 } CamCalibAecGlobal_t;
 

@@ -60,6 +60,9 @@ class V4L2DevIoctr {
   int getCameraModuleInfo(struct camera_module_info_s* camera_module);
   int getSensorConfigInfo(struct sensor_config_info_s* sensor_config);
   int accessSensor(struct sensor_reg_rw_s* sensor_rw);
+  int reqLgtFrm(struct light_req_s* lgt);
+  int getLightInfos(struct subdev_light_info* lgt_infos);
+  int getBootStreamInfo(struct isp_boot_stream_info* info);
   static unsigned int halFmtToV4l2Fmt(unsigned int halFmt);
   static RK_FRMAE_FORMAT V4l2FmtToHalFmt(unsigned int v4l2fmt);
   static unsigned int halColorSpaceToV4l2ColorSpace(unsigned int halColorSpace);  

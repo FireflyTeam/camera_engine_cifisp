@@ -50,6 +50,7 @@ CamIsp1xCtrItf::CamIsp1xCtrItf(CamHwItf* camHwItf, int devFd):
   osMutexInit(&mApiLock);
   mCamHwItf = camHwItf;
   mDevFd = devFd;
+  mHdrMode = BOOL_FALSE;
   //ALOGD("%s: x", __func__);
 }
 
@@ -1308,11 +1309,13 @@ bool CamIsp1xCtrItf::start(bool run_3a_thd) {
   if (++mStartCnt > 1)
     goto end;
 
-  if (!startMeasurements()) {
-    ALOGE("%s failed to start measurements", __func__);
-    --mStartCnt;
-    ret = false;
-    goto end;
+  if (run_3a_thd) {
+    if (!startMeasurements()) {
+      ALOGE("%s failed to start measurements", __func__);
+      --mStartCnt;
+      ret = false;
+      goto end;
+    }
   }
 
   mLenPos = -1;
@@ -1346,7 +1349,8 @@ bool CamIsp1xCtrItf::stop() {
   if (mRun3AThd)
     mISP3AThread->requestExitAndWait();
   osMutexLock(&mApiLock);
-  stopMeasurements();
+  if (mRun3AThd)
+    stopMeasurements();
 
 end:
   osMutexUnlock(&mApiLock);
@@ -1496,7 +1500,7 @@ bool CamIsp1xCtrItf::stopMeasurements() {
   enum v4l2_buf_type type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 
   if (ioctl(mIspFd, VIDIOC_STREAMOFF, &type) < 0) {
-    ALOGE("%s: VIDIOC_STREAMON failed\n", __func__);
+    ALOGE("%s: VIDIOC_STREAMOFF failed\n", __func__);
     return false;
   }
 

@@ -21,6 +21,7 @@ export  IS_BUILD_DUMPSYS
 export  IS_CAM_IA10_API
 export  IS_RK_ISP10
 export  IS_USE_RK_V4L2_HEAD
+export  IQDATA_MODE
 export  BUILD_TARGET
 
 SUBDIRS ?= 

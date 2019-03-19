@@ -72,6 +72,18 @@ struct rk_cams_dev_info {
   struct rk_usb_cam_dev_infos usb_devs;
 };
 
+#define RK_ENUM_LIGHT_NUM_MAX 5
+struct rk_cams_subdev_light_infos {
+	char light_name[64];
+	enum HAL_LIGHT_ID light_ctl;
+};
+
+struct rk_cams_subdev_light_info {
+	unsigned int num_light;
+	struct rk_cams_subdev_light_infos light_info[RK_ENUM_LIGHT_NUM_MAX];
+
+};
+
 class CamHwItf : public CamApiItf, virtual public enable_shared_from_this<CamHwItf> {
  public:
   enum PATHID {
@@ -179,7 +191,7 @@ class CamHwItf : public CamApiItf, virtual public enable_shared_from_this<CamHwI
 
   //ISP configure
   virtual bool configureISPModules(const void* config) { UNUSED_PARAM(config); return false;};
-  virtual int setExposure(unsigned int vts, unsigned int exposure, unsigned int gain, unsigned int gain_percent);
+  virtual int setExposure(struct HAL_ISP_Set_Exp_s* exp);
   virtual int setFocusPos(int position);
   //return -1 means unsupported
   virtual int isSupportedIrCut();
@@ -198,11 +210,16 @@ class CamHwItf : public CamApiItf, virtual public enable_shared_from_this<CamHwI
   virtual int setSensorMirror(struct HAL_ISP_Sensor_Mirror_s& mirror);
   virtual int setSensorReg(struct HAL_ISP_Sensor_Reg_s& reg);
   virtual int getSensorReg(struct HAL_ISP_Sensor_Reg_s& reg);
+  //boot stream info
+  virtual int getBootStream(struct HAL_ISP_Boot_Stream_s& info);
   //capture
   virtual int startCap(struct HAL_ISP_Cap_Req_s& req);
   virtual int getCapRes(struct HAL_ISP_Cap_Result_s& result);
   //IQPath
   virtual int reInitHW(struct HAL_ISP_Reboot_Req_s& req);
+  //struct light
+  virtual int reqLgtFrm(struct HAL_LIGHT_REQ& req);
+  virtual int getLightInfos(struct rk_cams_subdev_light_info& light_infos);
 
  protected:
   virtual void transDrvMetaDataToHal(const void* drvMeta, struct HAL_Buffer_MetaData* halMeta);

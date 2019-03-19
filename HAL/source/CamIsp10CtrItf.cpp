@@ -534,13 +534,13 @@ bool CamIsp10CtrItf::getIspConfig(enum HAL_ISP_SUB_MODULE_ID_e mod_id,
   return ret;
 }
 
-int CamIsp10CtrItf::setExposure(unsigned int vts, unsigned int exposure, unsigned int gain, unsigned int gain_percent) {
+int CamIsp10CtrItf::setExposure(struct HAL_ISP_Set_Exp_s* exp) {
   int ret = 0;
 
 #ifdef RK_ISP10
-  ret = ::setExposure(mDevFd, vts, exposure, gain, gain_percent);
+  ret = ::setExposure(mDevFd, exp);
   if (mSlaveInit == true && mCtrlMode == CAMISP_CTRL_MASTER)
-    ret |= ::setExposure(mSlaveDevFd, vts, exposure, gain, gain_percent);
+    ret |= ::setExposure(mSlaveDevFd, exp);
 #endif
   return ret;
 }
@@ -862,10 +862,14 @@ bool CamIsp10CtrItf::applyIspConfig(struct CamIsp10ConfigSet* isp_cfg) {
 
 void CamIsp10CtrItf::syncSlaveIsp() {
   int i;
+  struct HAL_ISP_Set_Exp_s exp;
   struct CamIsp10ConfigSet isp_cfg;
-  int newTime = mIA_results.aec.regIntegrationTime;
-  int newGain = mIA_results.aec.regGain;
-  int newVts = mIA_results.aec.LinePeriodsPerField;
+  exp.exposure = mIA_results.aec.regIntegrationTime;
+  exp.gain = mIA_results.aec.regGain;
+  exp.vts = mIA_results.aec.LinePeriodsPerField;
+  exp.gain_percent = 100;
+  exp.cls_exp_before = false;
+  exp.hdr_enable = false;
 
   if (mSlaveInit && mSlaveSync &&
       mCtrlMode == CAMISP_CTRL_MASTER) {
@@ -877,7 +881,7 @@ void CamIsp10CtrItf::syncSlaveIsp() {
 
     __applyIspConfig(mSlaveIspIoctl, &isp_cfg);
 #ifdef RK_ISP10
-    ::setExposure(mSlaveDevFd, newVts, newTime, newGain, 100);
+    ::setExposure(mSlaveDevFd, &exp);
 #endif
   }
 }
@@ -1026,9 +1030,7 @@ bool CamIsp10CtrItf::convertIAResults(
   unsigned int i;
   unsigned int isp_ref_width;
   unsigned int isp_ref_height;
-  int newTime;
-  int newGain;
-  int newVts;
+  struct HAL_ISP_Set_Exp_s exp;
 
   if (isp_cfg == NULL)
     return false;
@@ -1042,7 +1044,7 @@ bool CamIsp10CtrItf::convertIAResults(
   }
   if (isp_ref_width == 0 && isp_ref_height == 0) {
     isp_ref_width = 2048;
-	isp_ref_height = 2048;
+    isp_ref_height = 2048;
   }
 
   isp_cfg->active_configs = 0;
@@ -1060,29 +1062,35 @@ bool CamIsp10CtrItf::convertIAResults(
         /*ae enable or manual exposure*/
         if (ia_results->aec_enabled) {
           for (i = 0; i < ia_results->aec.exp_set_cnt; i++) {
-            newTime = ia_results->aec.exp_set[i].regTime;
-            newGain = ia_results->aec.exp_set[i].regGain;
-            newVts = ia_results->aec.exp_set[i].vts;
+            exp.vts = ia_results->aec.exp_set[i].vts;
+            exp.exposure = ia_results->aec.exp_set[i].regTime;
+            exp.gain = ia_results->aec.exp_set[i].regGain;
+            exp.gain_percent = 100;
+            exp.hdr_enable = false;
+            exp.cls_exp_before = (i == 0) ? true : false;
 
             //ALOGD("set auto exposure regtime: %d, reggain: %d, time:%f gain:%f pcf: %f, pppl: %d",
             //      newTime, newGain, ia_results->aec.coarse_integration_time,
             //      ia_results->aec.analog_gain_code_global,
             //      mCamIA_DyCfg.sensor_mode.pixel_clock_freq_mhz,
             //      mCamIA_DyCfg.sensor_mode.pixel_periods_per_line);
-            setExposure(newVts, newTime, newGain, 100);
+            setExposure(&exp);
           }
         } else if (((ia_results->aec.regIntegrationTime > 0) ||
-             (ia_results->aec.regGain > 0))) {
-            newTime = ia_results->aec.regIntegrationTime;
-            newGain = ia_results->aec.regGain;
-            newVts = ia_results->aec.LinePeriodsPerField;
+                   (ia_results->aec.regGain > 0))) {
+            exp.vts = ia_results->aec.LinePeriodsPerField;
+            exp.exposure = ia_results->aec.regIntegrationTime;
+            exp.gain = ia_results->aec.regGain;
+            exp.gain_percent = 100;
+            exp.hdr_enable = false;
+            exp.cls_exp_before = false;
 
             //ALOGD("set manual exposure regtime: %d, reggain: %d, time:%f gain:%f pcf: %f, pppl: %d",
             //      newTime, newGain, ia_results->aec.coarse_integration_time,
             //      ia_results->aec.analog_gain_code_global,
             //      mCamIA_DyCfg.sensor_mode.pixel_clock_freq_mhz,
             //      mCamIA_DyCfg.sensor_mode.pixel_periods_per_line);
-            setExposure(newVts, newTime, newGain, 100);
+            setExposure(&exp);
             ia_results->aec_enabled = BOOL_TRUE;
         }
 
@@ -1093,15 +1101,15 @@ bool CamIsp10CtrItf::convertIAResults(
             CIFISP_EXP_CTRL_AUTOSTOP_0;
 
         mCamIAEngine->mapHalWinToIsp(ia_results->aec.meas_win.h_size,
-                       ia_results->aec.meas_win.v_size,
-                       ia_results->aec.meas_win.h_offs,
-                       ia_results->aec.meas_win.v_offs,
-                       isp_ref_width,
-                       isp_ref_height,
-                       isp_cfg->configs.aec_config.meas_window.h_size,
-                       isp_cfg->configs.aec_config.meas_window.v_size,
-                       isp_cfg->configs.aec_config.meas_window.h_offs,
-                       isp_cfg->configs.aec_config.meas_window.v_offs);
+                ia_results->aec.meas_win.v_size,
+                ia_results->aec.meas_win.h_offs,
+                ia_results->aec.meas_win.v_offs,
+                isp_ref_width,
+                isp_ref_height,
+                isp_cfg->configs.aec_config.meas_window.h_size,
+                isp_cfg->configs.aec_config.meas_window.v_size,
+                isp_cfg->configs.aec_config.meas_window.h_offs,
+                isp_cfg->configs.aec_config.meas_window.v_offs);
 
         isp_cfg->active_configs |= ISP_AEC_MASK;
         isp_cfg->enabled[HAL_ISP_AEC_ID] = ia_results->aec_enabled;
@@ -1930,6 +1938,8 @@ void CamIsp10CtrItf::transDrvMetaDataToHal
     ispMetaData = (struct cifisp_isp_metadata*)v4l2Meta->isp;
     halMeta->timStamp = v4l2Meta->frame_t.vs_t;
   }
+
+  halMeta->lights_stat = v4l2Meta->lights_stat;
 
   if (ispMetaData) {
     TRACE_D(1, "%s:drv exp time gain %d %d",

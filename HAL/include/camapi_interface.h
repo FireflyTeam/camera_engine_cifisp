@@ -44,8 +44,8 @@ class CamApiItf {
   virtual int setFps(HAL_FPS_INFO_t fps);
   virtual int getFps(HAL_FPS_INFO_t &fps);
   
-  virtual int setAeWindow(int left_hoff, int top_voff, int right_width, int bottom_height);
-  virtual int getAeWindow(int &left_hoff, int &top_voff, int &right_width, int &bottom_height);
+  virtual int setAeWindow(int left_hoff, int top_voff, int right_hoff, int bottom_voff);
+  virtual int getAeWindow(int &left_hoff, int &top_voff, int &right_hoff, int &bottom_voff);
   virtual int setExposureMeterMode(enum HAL_AE_METERING_MODE aeMeterMode);
   virtual int getExposureMeterMode(enum HAL_AE_METERING_MODE& aeMeterMode);
   virtual int setExposureMeterCoeff(unsigned char meter_coeff[]);

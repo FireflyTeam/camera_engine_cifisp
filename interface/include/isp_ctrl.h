@@ -5,8 +5,7 @@
 
 int getSensorModeData(int devFd,
     struct isp_supplemental_sensor_mode_data* data);
-int setExposure(int m_cam_fd_overlay, unsigned int vts,
-    unsigned int exposure, unsigned int gain, unsigned int gain_percent);
+int setExposure(int m_cam_fd_overlay, struct HAL_ISP_Set_Exp_s* exp);
 int setAutoAdjustFps(int m_cam_fd_overlay, bool auto_adjust_fps);
 int setFocusPos(int m_cam_fd_overlay, unsigned int position);
 #endif

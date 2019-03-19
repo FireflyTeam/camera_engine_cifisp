@@ -257,5 +257,16 @@ v2.0.9.0
  10. af: fix crash issue when using af.
  11. change log of camera-ia version.
  12. add support rgb bayer12 (SBGGR12/SGBRG12/SGRBG12/SRGGB12).
+v2.0.a.0
+  1. fix af can not start;
+  2. add control api for cif device;
+  3. rename rkisp-demo -> cifisp-demo;
+  4. caculate and set exposure when environment light is changed;
+  5. speed up of iq data loading;
+  6. fix "VIDIOC_STREAMOFF failed" error when output raw data;
+  7. add getBootStream api;
+  8. add parameter check and change param name of setAeWindow and getAeWindow;
+  9. support light control in hal;
+ 10. support hdr mode for aec;
 ***********************************************/
-#define CAMHALVERSION "2.0.9.0"
+#define CAMHALVERSION "2.0.a.0"

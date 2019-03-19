@@ -26,7 +26,7 @@ class CamIsp11DevHwItf: public CamHwItf {
   virtual void deInitHw();
 
   //ISP dev  inerfaces
-  virtual int setExposure(unsigned int vts, unsigned int exposure, unsigned int gain, unsigned int gain_percent);
+  virtual int setExposure(struct HAL_ISP_Set_Exp_s* exp);
   virtual int setAutoAdjustFps(bool auto_adjust_fps);
   virtual bool configureISPModules(const void* config);
   //capture

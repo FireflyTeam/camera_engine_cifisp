@@ -536,7 +536,7 @@ struct HAL_ISP_sdg_cfg_s {
 struct HAL_ISP_flt_cfg_s {
   uint8_t denoise_level;
   uint8_t sharp_level;
-  int light_mode; 
+  int light_mode;
 };
 
 enum HAL_ISP_GAMMA_SEG_MODE_e {
@@ -553,7 +553,7 @@ struct HAL_ISP_goc_cfg_s {
   HAL_ISP_GAMMA_SEG_MODE_e  mode;
   uint8_t  used_cnt;
   uint16_t gamma_y[HAL_ISP_GOC_SECTION_MAX];
-  int light_mode; 
+  int light_mode;  
 };
 
 enum HAL_ISP_COLOR_RANGE_e {
@@ -610,6 +610,53 @@ struct HAL_ISP_awb_cfg_s {
   char IllName[20];
 };
 
+#define HAL_ISP_DSP_HDRAE_MAXGRIDITEMS  225
+enum HAL_ISP_AE_BayerMode_e {
+  BAYER_MODE_MIN = 0,
+  BAYER_MODE_BGGR = 1,
+  BAYER_MODE_GRBG = 2,
+  BAYER_MODE_GBRG = 3,
+  BAYER_MODE_RGGB = 4,
+  BAYER_MODE_MAX = 5
+};
+
+struct HAL_ISP_AE_YCoeff_s{
+  float rCoef;
+  float gCoef;
+  float bCoef;
+  float offset;
+};
+
+enum HAL_ISP_AE_HistStaticMode_e
+{
+  AE_HISTSTATICMODE_INVALID = 0,
+  AE_HISTSTATICMODE_Y = 1,
+  AE_HISTSTATICMODE_R = 2,
+  AE_HISTSTATICMODE_G = 3,
+  AE_HISTSTATICMODE_B = 4,
+  AE_HISTSTATICMODE_MAX = 5
+};
+
+enum HAL_ISP_AE_GridMode_e {
+  AE_MEASURE_GRID_INVALID = 0,
+  AE_MEASURE_GRID_1X1 = 1,
+  AE_MEASURE_GRID_5X5 = 2,
+  AE_MEASURE_GRID_9X9 = 3,
+  AE_MEASURE_GRID_15X15 = 4,
+  AE_MEASURE_GRID_MAX = 5
+};
+
+struct HAL_ISP_DSP_hdrae_cfg_s {
+  enum HAL_ISP_AE_BayerMode_e bayerMode;
+  enum HAL_ISP_AE_GridMode_e gridMode;
+  unsigned char pWeight[HAL_ISP_DSP_HDRAE_MAXGRIDITEMS];
+  enum HAL_ISP_AE_HistStaticMode_e histstaticMode;
+  struct HAL_ISP_AE_YCoeff_s yCoeff;
+  unsigned char imgBits;
+  unsigned short width;
+  unsigned short height;
+  unsigned short frames;
+};
 
 enum HAL_ISP_CTK_UPDATE_e {
   HAL_ISP_CTK_UPDATE_CC_MATRIX = 1,
@@ -901,7 +948,6 @@ struct HAL_3DnrCfg{
   struct HAL_3DnrParamCfg param_cfg;
 };
 
-
 struct HAL_New3Dnr_ynr_params_s {
 	uint32_t enable_ynr;        // Set to 1 by default
 	uint32_t enable_tnr;        // Set to 1 by default, it will be disabled when enable_ynr=0
@@ -935,7 +981,6 @@ struct HAL_New3DnrCfg_s {
 };
 
 
-
 enum HAL_FLT_DENOISE_LEVEL_e {
   HAL_FLT_DENOISE_LEVEL_0,
   HAL_FLT_DENOISE_LEVEL_1,
@@ -964,6 +1009,48 @@ enum HAL_FLT_SHARPENING_LEVEL_e {
   HAL_FLT_SHARPENING_LEVEL_10
 };
 
+enum HAL_LIGHT_ID {
+  HAL_LIGHT0 = 0,
+  HAL_LIGHT1,
+  HAL_LIGHT2,
+  HAL_LIGHT3,
+  HAL_LIGHT4
+};
+
+enum HAL_LIGHE_POWER {
+  HAL_LIGHT_ON = 0,
+  HAL_LIGHT_OFF,
+  HAL_LIGHT_INVAILD = 0xFFFF
+};
+
+enum HAL_LIGHE_CTL_MODE {
+  HAL_LIGHT_MANUAL_CTL = 0,
+  HAL_LIGHT_AUTO_CTL,
+  HAL_LIGHT_ALTERNATE_CTL
+};
+
+struct HAL_LIGHT_CTL_AUTO_PARA_s {
+  bool is_exclusive;
+  unsigned short req_delay;
+  unsigned short req_num;
+};
+
+struct HAL_LIGHT_CTL_ALTER_PARA_s {
+  enum HAL_LIGHT_ID alter_id;
+  unsigned short req_delay;
+  unsigned short req_num;
+};
+
+struct HAL_LIGHT_REQ {
+  enum HAL_LIGHT_ID id;
+  enum HAL_LIGHE_POWER power;
+  enum HAL_LIGHE_CTL_MODE ctl_mode;
+  union {
+    struct HAL_LIGHT_CTL_AUTO_PARA_s auto_para;
+    struct HAL_LIGHT_CTL_ALTER_PARA_s alter_para;
+  };
+};
+
 struct HAL_Buffer_MetaData {
   struct HAL_ISP_awb_cfg_s awb;
   struct HAL_ISP_flt_cfg_s flt;
@@ -975,9 +1062,22 @@ struct HAL_Buffer_MetaData {
   struct HAL_ISP_ctk_cfg_s ctk;
   struct HAL_ISP_lsc_cfg_s lsc;
   struct HAL_ISP_goc_cfg_s goc;
+  struct HAL_ISP_DSP_hdrae_cfg_s dsp_hdrae;
   struct timeval timStamp;
   float exp_time;
   float exp_gain;
+  float exp_time_l;
+  float exp_gain_l;
+  float exp_time_s;
+  float exp_gain_s;
+  /*HdrAE result*/
+  float OEROI;
+  float TargetOELuma;
+  float DarkROI;
+  float TargetDarkLuma;
+  float HdrMeanLuma[3];
+  int   DarkNum;
+  int   OENum;
   float MeanLuma;
   float DON_Fac;
   uint8_t LightMode;
@@ -985,6 +1085,7 @@ struct HAL_Buffer_MetaData {
   bool_t enabled[HAL_ISP_MODULE_MAX_ID_ID + 1];
   void* metedata_drv;
   float maxGainRange;
+  uint32_t lights_stat;
 };
 
 enum HAL_ISP_ACTIVE_MODE {
@@ -1434,10 +1535,41 @@ struct HAL_ISP_Sensor_Reg_s {
   uint16_t reg_data;
 };
 
+struct HAL_ISP_Boot_Stream_s {
+  uint32_t count;
+  uint32_t width;
+  uint32_t height;
+  uint32_t format;
+  uint32_t rese_addr;
+  uint32_t rese_size;
+};
+
 #define HAL_ISP_IQ_PATH_LEN    32
 struct HAL_ISP_Reboot_Req_s {
   uint8_t reboot;
   int8_t  iq_path[HAL_ISP_IQ_PATH_LEN];
+};
+
+struct HAL_ISP_Set_Exp_s {
+  uint32_t vts;
+  uint32_t exposure;
+  uint32_t gain;
+  uint32_t gain_percent;
+  bool cls_exp_before;
+
+  bool hdr_enable;
+  uint32_t l_regtime;
+  uint32_t l_reggain;
+  uint32_t m_regtime;
+  uint32_t m_reggain;
+  uint32_t s_regtime;
+  uint32_t s_reggain;
+  float l_time;
+  float l_gain;
+  float m_time;
+  float m_gain;
+  float s_time;
+  float s_gain;
 };
 
 #endif

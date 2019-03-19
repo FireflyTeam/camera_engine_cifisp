@@ -18,7 +18,7 @@
 #include <sys/ioctl.h>
 
 #include <linux/videodev2.h>
-#include "rkisp_interface.h"
+#include "cifisp_interface.h"
 
 #define CLEAR(x) memset(&(x), 0, sizeof(x))
 

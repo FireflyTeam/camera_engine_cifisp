@@ -52,7 +52,6 @@ using google::protobuf::internal::weak_ptr;
 #define CAMIA10_AWB_WP_MASK  (1<<25)
 #define CAMIA10_NEW_DSP_3DNR_MASK (1 << 26)
 
-
 #define CAMIA10_ALL_MASK  (0xffffffff)
 
 struct CamIA10_SensorModeData {
@@ -94,7 +93,7 @@ struct CamIA10_DyCfg {
   struct HAL_WdrCfg wdr_cfg;
   enum HAL_MODE_e dsp3dnr_mode;
   struct HAL_3DnrLevelCfg dsp3dnr_level;
-  struct HAL_3DnrParamCfg dsp3dnr_param;
+  struct HAL_3DnrParamCfg dsp3dnr_param; 
   enum HAL_MODE_e newDsp3dnr_mode;
   struct HAL_New3DnrCfg_s newDsp3dnr_cfg;
   enum HAL_MODE_e flt_mode;
@@ -201,9 +200,10 @@ class CamIA10EngineItf {
   CamIA10EngineItf() {};
   virtual ~CamIA10EngineItf() {};
 
-  virtual RESULT initStatic(char* aiqb_data_file) = 0;
+  virtual RESULT initStatic(char* aiqb_data_file, enum IQDATA_LOAD_MODE mode = IQDATA_LOAD_XMLFILE) = 0;
   virtual RESULT initDynamic(struct CamIA10_DyCfg* cfg) = 0;
   virtual RESULT setStatistics(struct CamIA10_Stats* stats) = 0;
+  virtual RESULT getHdrMode(bool_t *mode) = 0;
 
   virtual RESULT runAEC() = 0;
   virtual RESULT getAECResults(AecResult_t* result) = 0;

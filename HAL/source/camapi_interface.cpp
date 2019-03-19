@@ -347,6 +347,7 @@ int CamApiItf::setManualGainAndTime(float hal_gain, float hal_time) {
   unsigned int gain_percent = 100;
   int sensor_vts;
   float init_fps;
+  struct HAL_ISP_Set_Exp_s exp;
 
   sensor_vts = mIspCfg.sensor_mode.line_periods_per_field;
   if (mIspCfg.aec_cfg.api_set_fps) {
@@ -361,11 +362,18 @@ int CamApiItf::setManualGainAndTime(float hal_gain, float hal_time) {
   mAEManualExpGain = hal_gain;
 
   mIspDev->mapHalExpToSensor(hal_gain, hal_time, sensor_gain, sensor_time);
-  if (sensor_gain >= 0 && sensor_time >= 0)
-    mIspDev->setExposure(sensor_vts, sensor_time, sensor_gain, gain_percent);
-  else
+  if (sensor_gain >= 0 && sensor_time >= 0) {
+    exp.vts = sensor_vts;
+    exp.exposure = sensor_time;
+    exp.gain = sensor_gain;
+    exp.gain_percent = gain_percent;
+    exp.hdr_enable = false;
+    exp.cls_exp_before = false;
+    mIspDev->setExposure(&exp);
+  } else {
     ALOGE("%s: Manual gain or time is invalid! hal_gain(%f), hal_time(%f), sensor_time(%d), sensor_gain(%d)",
       __func__, hal_gain, hal_time, sensor_time, sensor_gain);
+  }
 }
 
 int CamApiItf::setAntiBandMode(enum HAL_AE_FLK_MODE flkMode) {
@@ -407,21 +415,28 @@ int CamApiItf::getFps(HAL_FPS_INFO_t &fps) {
   return 0;
 }
 
-int CamApiItf::setAeWindow(int left_hoff, int top_voff, int right_width, int bottom_height) {
-  mAeWin.left_hoff = left_hoff;
-  mAeWin.top_voff = top_voff;
-  mAeWin.right_width = right_width;
-  mAeWin.bottom_height = bottom_height;
+int CamApiItf::setAeWindow(int left_hoff, int top_voff, int right_hoff, int bottom_voff) {
+  if (left_hoff < right_hoff && top_voff < bottom_voff) {
+    mAeWin.left_hoff = left_hoff;
+    mAeWin.top_voff = top_voff;
+    mAeWin.right_width = right_hoff;
+    mAeWin.bottom_height = bottom_voff;
 
-  configIsp_l(NULL);
-  return 0;
+    configIsp_l(NULL);
+    return 0;
+  } else {
+    ALOGE("%s: input param error: l %d, t %d, r %d, b %d",
+      __func__, left_hoff, top_voff, right_hoff, bottom_voff);
+
+    return -1;
+  }
 }
 
-int CamApiItf::getAeWindow(int &left_hoff, int &top_voff, int &right_width, int &bottom_height) {
+int CamApiItf::getAeWindow(int &left_hoff, int &top_voff, int &right_hoff, int &bottom_voff) {
   left_hoff = mAeWin.left_hoff;
   top_voff = mAeWin.top_voff;
-  right_width = mAeWin.right_width;
-  bottom_height = mAeWin.bottom_height;
+  right_hoff = mAeWin.right_width;
+  bottom_voff = mAeWin.bottom_height;
   return 0;
 }
 

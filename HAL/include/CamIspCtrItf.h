@@ -107,7 +107,7 @@ class CamIspCtrItf {
   virtual void getAeState(enum HAL_AE_STATE* ae_state) = 0;
   virtual bool getIspConfig(enum HAL_ISP_SUB_MODULE_ID_e mod_id,
       bool_t& enabled, CamIspCtrItf::Configuration& cfg) = 0;
-  virtual int setExposure(unsigned int vts, unsigned int exposure, unsigned int gain, unsigned int gain_percent) = 0;
+  virtual int setExposure(struct HAL_ISP_Set_Exp_s* exp) = 0;
   virtual int setAutoAdjustFps(bool auto_adjust_fps) = 0;
   virtual void mapSensorExpToHal(int sensorGain, int sensorInttime, float& halGain, float& halInttime) = 0;
   /*

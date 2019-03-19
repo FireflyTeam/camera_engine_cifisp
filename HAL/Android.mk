@@ -67,6 +67,12 @@ ifeq ($(IS_USE_RK_V4L2_HEAD),true)
 LOCAL_CPPFLAGS += -D USE_RK_V4L2_HEAD_FILES
 endif
 
+ifeq ($(IQDATA_MODE),loadcode)
+LOCAL_CPPFLAGS += -D IQDATA_LOAD_ON
+else ifeq ($(IQDATA_MODE),dumpfile)
+LOCAL_CPPFLAGS += -D IQDATA_DUMP_ON
+endif
+
 LOCAL_C_INCLUDES += \
 	$(LOCAL_PATH)/include\
 	$(LOCAL_PATH)/include_private\

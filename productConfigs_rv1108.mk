@@ -12,6 +12,9 @@ IS_CAM_IA10_API = false
 IS_RK_ISP10 = false
 IS_USE_RK_V4L2_HEAD = true
 
+#loadxml, loadcode, dumpfile
+IQDATA_MODE = loadxml
+
 #BUILD_TARGET = rk3288
 #BUILD_TARGET = rk3399
 BUILD_TARGET = rv1108

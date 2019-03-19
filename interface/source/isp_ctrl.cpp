@@ -21,29 +21,31 @@ int getSensorModeData(int devFd,
 	return ret;
 }
 
-int setExposure(int m_cam_fd_overlay, unsigned int vts,
-    unsigned int exposure, unsigned int gain, unsigned int gain_percent) {
-  int ret;
-  struct v4l2_ext_control exp_gain[4];
+int setExposure(int m_cam_fd_overlay, struct HAL_ISP_Set_Exp_s* exp) {
+  int ret, idx = 0;
+  struct v4l2_ext_control exp_gain[5];
   struct v4l2_ext_controls ctrls;
 
-  exp_gain[0].id = V4L2_CID_EXPOSURE;
+  if (exp->cls_exp_before) {
+    exp_gain[idx].id = RK_V4L2_CID_CLS_EXP;
+    exp_gain[idx++].value = 0;
+  }
 
-  exp_gain[0].value = exposure;
-  exp_gain[1].id = V4L2_CID_GAIN;
-  exp_gain[1].value = gain;
-  exp_gain[2].id = RK_V4L2_CID_GAIN_PERCENT;
-  exp_gain[2].value = gain_percent;
-  exp_gain[3].id = RK_V4L2_CID_VTS;
-  exp_gain[3].value = vts;
+  exp_gain[idx].id = V4L2_CID_EXPOSURE;
+  exp_gain[idx++].value = exp->exposure;
+  exp_gain[idx].id = V4L2_CID_GAIN;
+  exp_gain[idx++].value = exp->gain;
+  exp_gain[idx].id = RK_V4L2_CID_GAIN_PERCENT;
+  exp_gain[idx++].value = exp->gain_percent;
+  exp_gain[idx].id = RK_V4L2_CID_VTS;
+  exp_gain[idx++].value = exp->vts;
 
-  ctrls.count = 4;
+  ctrls.count = idx;
   ctrls.ctrl_class = V4L2_CTRL_CLASS_USER;
   ctrls.controls = exp_gain;
   ctrls.reserved[0] = 0;
   ctrls.reserved[1] = 0;
   ret = ioctl(m_cam_fd_overlay, VIDIOC_S_EXT_CTRLS, &ctrls);
-
   if (ret < 0) {
     LOGE("ERR(%s-%d):set of  AE seting to sensor config failed! err: %s\n",
          __func__,

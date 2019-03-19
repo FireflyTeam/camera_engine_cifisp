@@ -18,7 +18,15 @@
 
 
 #define AE_STABLE_COUNT_NUM   30
+
 using namespace std;
+
+#ifdef IQDATA_LOAD_ON
+static const char gCamIqData[] = {
+#include "CamIqData.db"
+};
+#endif
+
 static bool AecMeasuringMode_to_cifisp_exp_meas_mode(
     AecMeasuringMode_t in, enum cifisp_exp_meas_mode* out) {
   switch (in) {
@@ -140,8 +148,18 @@ bool CamIsp11CtrItf::init(const char* tuningFile,
       goto init_exit;
     }
 
-    ALOGD("%s:tuningFile %s", __func__, tuningFile);
+#ifdef IQDATA_LOAD_ON
+    ALOGD("%s: load iqdata from CamIqData.db", __func__);
+    if (mCamIAEngine->initStatic((char*)gCamIqData, IQDATA_LOAD_BINDATA) != RET_SUCCESS) {
+#else
+#ifdef IQDATA_DUMP_ON
+    ALOGD("%s: dump iqdata from tuningFile %s", __func__, tuningFile);
+    if (mCamIAEngine->initStatic((char*)tuningFile, IQDATA_DUMP_BINDATA) != RET_SUCCESS) {
+#else
+    ALOGD("%s: use tuningFile %s", __func__, tuningFile);
     if (mCamIAEngine->initStatic((char*)tuningFile) != RET_SUCCESS) {
+#endif
+#endif
       ALOGE("%s: initstatic failed", __func__);
       osMutexUnlock(&mApiLock);
       deInit();
@@ -149,6 +167,8 @@ bool CamIsp11CtrItf::init(const char* tuningFile,
       ret = false;
       goto init_exit;
     }
+
+    mCamIAEngine->getHdrMode(&mHdrMode);
 
     if (!initISPStream(ispDev)) {
       ALOGE("%s: initISPStream failed", __func__);
@@ -534,10 +554,10 @@ bool CamIsp11CtrItf::getIspConfig(enum HAL_ISP_SUB_MODULE_ID_e mod_id,
   return ret;
 }
 
-int CamIsp11CtrItf::setExposure(unsigned int vts, unsigned int exposure, unsigned int gain, unsigned int gain_percent) {
+int CamIsp11CtrItf::setExposure(struct HAL_ISP_Set_Exp_s* exp) {
   int ret;
 
-  ret = mCamHwItf->setExposure(vts, exposure, gain, gain_percent);
+  ret = mCamHwItf->setExposure(exp);
   return ret;
 }
 
@@ -856,7 +876,7 @@ bool CamIsp11CtrItf::applyIspConfig(struct CamIsp11ConfigSet* isp_cfg) {
 bool CamIsp11CtrItf::convertIspStats(
     struct cifisp_stat_buffer* isp_stats,
     struct CamIA10_Stats* ia_stats) {
-  unsigned int i;
+  unsigned int i, k;
 
   m3AMeasType = HAL_3A_MEAS_INVALID;
   if (isp_stats->meas_type & (CIFISP_STAT_AUTOEXP |
@@ -873,7 +893,53 @@ bool CamIsp11CtrItf::convertIspStats(
     memcpy(ia_stats->aec.exp_mean,
            isp_stats->params.ae.exp_mean,
            sizeof(ia_stats->aec.exp_mean));
-    
+
+    if (mHdrMode) {
+     float TMOlumatmp=0.0f;
+
+     for(i=0;i<25;i++)
+     {
+       TMOlumatmp+=ia_stats->aec.exp_mean[i];
+     }
+
+     TMOlumatmp=TMOlumatmp/25.0f;
+
+     //zlj add
+     for(i=0;i<3;i++)
+     {
+       memcpy(ia_stats->aec.oneframe[i].hdr_exp_mean,
+           isp_stats->params.hdr_ae.oneframe[i].mean_meas.y_meas,
+           sizeof(ia_stats->aec.oneframe[i].hdr_exp_mean));//only short-frame
+     }
+     ia_stats->aec.fOEMeasRes.OE_Pixel=isp_stats->params.hdr_ae.OEMeasRes.OE_Pixel;
+     ia_stats->aec.fOEMeasRes.SumHistPixel=isp_stats->params.hdr_ae.OEMeasRes.SumHistPixel;
+     ia_stats->aec.fOEMeasRes.SframeMaxLuma=isp_stats->params.hdr_ae.OEMeasRes.SframeMaxLuma;
+     ia_stats->aec.sensor.exp_time=isp_stats->params.hdr_ae.sensor.exp_time;
+     ia_stats->aec.sensor.gain=isp_stats->params.hdr_ae.sensor.gain;
+     ia_stats->aec.sensor.exp_time_l=isp_stats->params.hdr_ae.sensor.exp_time_l;
+     ia_stats->aec.sensor.gain_l=isp_stats->params.hdr_ae.sensor.gain_l;
+     ia_stats->aec.sensor.exp_time_s=isp_stats->params.hdr_ae.sensor.exp_time_s;
+     ia_stats->aec.sensor.gain_s=isp_stats->params.hdr_ae.sensor.gain_s;
+     ia_stats->aec.lgmean=isp_stats->params.hdr_ae.lgmean;
+
+     ia_stats->aec.fDRIndex.NormalIndex=isp_stats->params.hdr_ae.DRIndexRes.fNormalIndex;
+     ia_stats->aec.fDRIndex.LongIndex=isp_stats->params.hdr_ae.DRIndexRes.fLongIndex;
+
+    /*ALOGE("%s:ia_stats,OE_Pixel=%u,sumpixel=%u,maxluma=%u\n",
+          __func__,
+          ia_stats->aec.fOEMeasRes.OE_Pixel,
+          ia_stats->aec.fOEMeasRes.SumHistPixel,
+          ia_stats->aec.fOEMeasRes.SframeMaxLuma) ;
+     ALOGE("%s:isp_stats,OE_Pixel=%u,sumpixel=%u,maxluma=%u\n",
+          __func__,
+          isp_stats->params.hdr_ae.OEMeasRes.OE_Pixel,
+          isp_stats->params.hdr_ae.OEMeasRes.SumHistPixel,
+          isp_stats->params.hdr_ae.OEMeasRes.SframeMaxLuma);*/
+
+    /*ALOGE("%s:copy luma test, luma[10]=%u\n",
+          __func__,
+          ia_stats->aec.hdr_exp_mean[10]);*/
+    }
     /*ALOGD("> AE Measurement:\n");
     for (i = 0; i < CIFISP_AE_MEAN_MAX; i += 5) {
       ALOGD(">     Exposure means %d-%d: %d, %d, %d, %d, %d\n",i, i+4,
@@ -884,6 +950,19 @@ bool CamIsp11CtrItf::convertIspStats(
         isp_stats->params.ae.exp_mean[i + 4]);
 
     }*/
+/*
+    ALOGD("\n\nHDR AE Measurement:");
+    for (k = 0; k < 3; k++) {
+     ALOGD("frame %1d hist_bin[%d] = 0x%x",
+         k, 0, isp_stats->params.hdr_ae.oneframe[k].hist_meas.hist_bin[0]);
+     ALOGD("frame %1d hist_bin[%d] = 0x%x",
+         k, 255, isp_stats->params.hdr_ae.oneframe[k].hist_meas.hist_bin[255]);
+    
+     ALOGD("frame %1d mean_meas[%d].y_meas = 0x%x",
+         k, 0, isp_stats->params.hdr_ae.oneframe[k].mean_meas.y_meas[0]);
+     ALOGD("frame %1d mean_meas[%d].y_meas = 0x%x",
+         k, 224, isp_stats->params.hdr_ae.oneframe[k].mean_meas.y_meas[224]);
+    }*/
   }
 
   if (isp_stats->meas_type & CIFISP_STAT_HIST) {
@@ -891,6 +970,16 @@ bool CamIsp11CtrItf::convertIspStats(
     memcpy(ia_stats->aec.hist_bins,
            isp_stats->params.hist.hist_bins,
            sizeof(ia_stats->aec.hist_bins));
+
+    if (mHdrMode) {
+      for(i=0;i<3;i++)
+      {
+        memcpy(ia_stats->aec.oneframe[i].hdr_hist_bins,
+         isp_stats->params.hdr_ae.oneframe[i].hist_meas.hist_bin,
+         sizeof(ia_stats->aec.oneframe[i].hdr_hist_bins)); //only short-frame
+      }
+    }
+
     /*
     for (int i=0; i<CIFISP_HIST_BIN_N_MAX; i+=4) {
       ALOGD("histogram > %d-%d-%d-%d: %d-%d-%d-%d \n",
@@ -994,12 +1083,10 @@ bool CamIsp11CtrItf::configureISP(const void* config) {
 bool CamIsp11CtrItf::convertIAResults(
     struct CamIsp11ConfigSet* isp_cfg,
     struct CamIA10_Results* ia_results) {
-  unsigned int i;
+  unsigned int i, j;
   unsigned int isp_ref_width;
   unsigned int isp_ref_height;
-  int newTime;
-  int newGain;
-  int newVts;
+  struct HAL_ISP_Set_Exp_s exp;
 
   if (isp_cfg == NULL)
     return false;
@@ -1026,30 +1113,94 @@ bool CamIsp11CtrItf::convertIAResults(
       if (ia_results->aec.actives & CAMIA10_AEC_MASK) {
         /*ae enable or manual exposure*/
         if (ia_results->aec_enabled) {
-          for (i = 0; i < ia_results->aec.exp_set_cnt; i++) {
-            newTime = ia_results->aec.exp_set[i].regTime;
-            newGain = ia_results->aec.exp_set[i].regGain;
-            newVts = ia_results->aec.exp_set[i].vts;
+          if (!mHdrMode) {
+            for (i = 0; i < ia_results->aec.exp_set_cnt; i++) {
+              exp.vts = ia_results->aec.exp_set[i].vts;
+              exp.exposure = ia_results->aec.exp_set[i].regTime;
+              exp.gain = ia_results->aec.exp_set[i].regGain;
+              exp.gain_percent = 100;
+              exp.hdr_enable = false;
+              exp.cls_exp_before = (i == 0) ? true : false;
 
-            //ALOGD("set auto exposure regtime: %d, reggain: %d, time:%f gain:%f pcf: %f, pppl: %d",
-            //      newTime, newGain, ia_results->aec.coarse_integration_time,
-            //      ia_results->aec.analog_gain_code_global,
-            //      mCamIA_DyCfg.sensor_mode.pixel_clock_freq_mhz,
-            //      mCamIA_DyCfg.sensor_mode.pixel_periods_per_line);
-            mCamHwItf->setExposure(newVts, newTime, newGain, 100);
+              //ALOGD("set auto exposure regtime: %d, reggain: %d, time:%f gain:%f pcf: %f, pppl: %d",
+              //      newTime, newGain, ia_results->aec.coarse_integration_time,
+              //      ia_results->aec.analog_gain_code_global,
+              //      mCamIA_DyCfg.sensor_mode.pixel_clock_freq_mhz,
+              //      mCamIA_DyCfg.sensor_mode.pixel_periods_per_line);
+              mCamHwItf->setExposure(&exp);
+            }
+          } else {
+            exp.vts = ia_results->aec.LinePeriodsPerField;
+            for (i = 0; i < ia_results->aec.exp_set_cnt; i++) {
+              int L_regtime=ia_results->aec.exp_set[i].RegHdrTime[0];
+              int L_reggain=ia_results->aec.exp_set[i].RegHdrGains[0];
+              int M_regtime=ia_results->aec.exp_set[i].RegHdrTime[1];
+              int M_reggain=ia_results->aec.exp_set[i].RegHdrGains[1];
+              int S_regtime=ia_results->aec.exp_set[i].RegHdrTime[2];
+              int S_reggain=ia_results->aec.exp_set[i].RegHdrGains[2];
+              float L_time,L_gain,M_time,M_gain,S_time,S_gain;
+            
+              if (mCamIAEngine.get()) {
+                mCamIAEngine->mapSensorExpToHal
+                (
+                  L_reggain,
+                  L_regtime,
+                  L_gain,
+                  L_time
+                );
+                mCamIAEngine->mapSensorExpToHal
+                (
+                  M_reggain,
+                  M_regtime,
+                  M_gain,
+                  M_time
+                );
+                mCamIAEngine->mapSensorExpToHal
+                (
+                  S_reggain,
+                  S_regtime,
+                  S_gain,
+                  S_time
+                );
+              }
+
+              //for(j=0;j<3;j++)
+              //  ALOGE("%d RegTime[%d]=%d,RegGain[%d]=%d\n",i, j,ia_results->aec.exp_set[i].RegHdrTime[j],
+              //		  j,ia_results->aec.exp_set[i].RegHdrGains[j]);
+
+              exp.hdr_enable = true;
+              exp.l_regtime = L_regtime;
+              exp.l_reggain = L_reggain;
+              exp.m_regtime = M_regtime;
+              exp.m_reggain = M_reggain; 
+              exp.s_regtime = S_regtime;
+              exp.s_reggain = S_reggain;
+              exp.gain_percent = 100;
+              exp.l_time = L_time;
+              exp.l_gain = L_gain;
+              exp.m_time = M_time;
+              exp.m_gain = M_gain;
+              exp.s_time = S_time;
+              exp.s_gain = S_gain;
+              exp.cls_exp_before = (i == 0) ? true : false;
+              mCamHwItf->setExposure(&exp);//ok now
+            }
           }
         } else if (((ia_results->aec.regIntegrationTime > 0) ||
              (ia_results->aec.regGain > 0))) {
-            newTime = ia_results->aec.regIntegrationTime;
-            newGain = ia_results->aec.regGain;
-            newVts = ia_results->aec.LinePeriodsPerField;
+            exp.vts = ia_results->aec.LinePeriodsPerField;
+            exp.exposure = ia_results->aec.regIntegrationTime;
+            exp.gain = ia_results->aec.regGain;
+            exp.gain_percent = 100;
+            exp.hdr_enable = false;
+            exp.cls_exp_before = false;
 
             //ALOGD("set manual exposure regtime: %d, reggain: %d, time:%f gain:%f pcf: %f, pppl: %d",
             //      newTime, newGain, ia_results->aec.coarse_integration_time,
             //      ia_results->aec.analog_gain_code_global,
             //      mCamIA_DyCfg.sensor_mode.pixel_clock_freq_mhz,
             //      mCamIA_DyCfg.sensor_mode.pixel_periods_per_line);
-            mCamHwItf->setExposure(newVts, newTime, newGain, 100);
+            mCamHwItf->setExposure(&exp);
             ia_results->aec_enabled = BOOL_TRUE;
         }
 
@@ -1076,12 +1227,12 @@ bool CamIsp11CtrItf::convertIAResults(
                 ia_results->aec.meas_mode);
 
         mAeStableCnt = 0;
-		mAeState = HAL_AE_STATE_UNSTABLE;
+        mAeState = HAL_AE_STATE_UNSTABLE;
       } else {
         if (mAeStableCnt < AE_STABLE_COUNT_NUM) {
           mAeStableCnt++;
         } else {
-		  mAeState = HAL_AE_STATE_STABLE;
+          mAeState = HAL_AE_STATE_STABLE;
         }
       }
       if (
@@ -1110,12 +1261,12 @@ bool CamIsp11CtrItf::convertIAResults(
 
       }
 
-	  if(ia_results->aec.actives & CAMIA10_AEC_AFPS_MASK)
-	  {
-		//ioctl auto adjust afps to kernel to sensor driver
-		CamIsp11DevHwItf *CamIsp11HwItf = dynamic_cast<CamIsp11DevHwItf *>(mCamHwItf);
-		CamIsp11HwItf->setAutoAdjustFps(ia_results->aec.auto_adjust_fps);
-	  }
+      if(ia_results->aec.actives & CAMIA10_AEC_AFPS_MASK)
+      {
+        //ioctl auto adjust afps to kernel to sensor driver
+        CamIsp11DevHwItf *CamIsp11HwItf = dynamic_cast<CamIsp11DevHwItf *>(mCamHwItf);
+        CamIsp11HwItf->setAutoAdjustFps(ia_results->aec.auto_adjust_fps);
+      }
     }
 
     if (ia_results->active & CAMIA10_AWB_GAIN_MASK) {
@@ -1576,24 +1727,30 @@ bool CamIsp11CtrItf::convertIAResults(
       isp_cfg->active_configs |=  ISP_BDM_MASK;
     }
 
-    if (ia_results->active & CAMIA10_GOC_MASK) {
-      if (ia_results->goc.mode  == CAMERIC_ISP_SEGMENTATION_MODE_LOGARITHMIC)
-        isp_cfg->configs.goc_config.mode =
-            CIFISP_GOC_MODE_LOGARITHMIC;
-      else if (ia_results->goc.mode  == CAMERIC_ISP_SEGMENTATION_MODE_EQUIDISTANT)
-        isp_cfg->configs.goc_config.mode =
-            CIFISP_GOC_MODE_EQUIDISTANT;
-      else
-        ALOGE("%s: not support %d goc mode.",
-              __func__, ia_results->goc.mode);
-      for (int i = 0; i < CIFISP_GAMMA_OUT_MAX_SAMPLES; i++) {
-        isp_cfg->configs.goc_config.gamma_y[i] =
-            ia_results->goc.gamma_y.GammaY[i];
-      }
+    if (!mHdrMode) {
+      if (ia_results->active & CAMIA10_GOC_MASK) {
+        if (ia_results->goc.mode  == CAMERIC_ISP_SEGMENTATION_MODE_LOGARITHMIC)
+          isp_cfg->configs.goc_config.mode =
+              CIFISP_GOC_MODE_LOGARITHMIC;
+        else if (ia_results->goc.mode  == CAMERIC_ISP_SEGMENTATION_MODE_EQUIDISTANT)
+          isp_cfg->configs.goc_config.mode =
+              CIFISP_GOC_MODE_EQUIDISTANT;
+        else
+          ALOGE("%s: not support %d goc mode.",
+                __func__, ia_results->goc.mode);
+        for (int i = 0; i < CIFISP_GAMMA_OUT_MAX_SAMPLES; i++) {
+          isp_cfg->configs.goc_config.gamma_y[i] =
+              ia_results->goc.gamma_y.GammaY[i];
+        }
 
-      isp_cfg->enabled[HAL_ISP_GOC_ID] = ia_results->goc.enabled;
+        isp_cfg->enabled[HAL_ISP_GOC_ID] = ia_results->goc.enabled;
+        isp_cfg->active_configs |=  ISP_GOC_MASK;
+      }
+     } else {
+      isp_cfg->configs.goc_config.mode = CIFISP_GOC_MODE_LOGARITHMIC;
+      isp_cfg->enabled[HAL_ISP_GOC_ID] = BOOL_TRUE;
       isp_cfg->active_configs |=  ISP_GOC_MASK;
-    }
+     }
 
     if (ia_results->active & CAMIA10_CPROC_MASK) {
       isp_cfg->configs.cproc_config.brightness =
@@ -2008,6 +2165,15 @@ void CamIsp11CtrItf::transDrvMetaDataToHal
   strcpy(halMeta->awb.IllName,mIA_results.awb.IllName);
   //ALOGE("yamasaki: transDrvMetaDataToHal: IlluName = %s",mIA_results.awb.IllName);
   halMeta->MeanLuma = mIA_results.aec.MeanLuma;
+  halMeta->HdrMeanLuma[0]=mIA_results.aec.HdrMeanLuma[0];
+  halMeta->HdrMeanLuma[1]=mIA_results.aec.HdrMeanLuma[1];
+  halMeta->HdrMeanLuma[2]=mIA_results.aec.HdrMeanLuma[2];
+  halMeta->DarkROI=mIA_results.aec.DarkROI;
+  halMeta->OEROI=mIA_results.aec.OEROI;
+  halMeta->TargetDarkLuma=mIA_results.aec.TargetDarkLuma;
+  halMeta->TargetOELuma=mIA_results.aec.TargetOELuma;
+  halMeta->OENum=mIA_results.aec.OENum;
+  halMeta->DarkNum=mIA_results.aec.DarkNum;
   halMeta->maxGainRange = mIA_results.aec.MaxGainRange;
   halMeta->DON_Fac = mIA_results.aec.DON_Fac;
   halMeta->LightMode = mCamIA_DyCfg.LightMode;
@@ -2021,21 +2187,47 @@ void CamIsp11CtrItf::transDrvMetaDataToHal
     halMeta->timStamp = v4l2Meta->frame_t.vs_t;
   }
 
+  halMeta->lights_stat = v4l2Meta->lights_stat;
+
   if (ispMetaData) {
     TRACE_D(1, "%s:drv exp time gain %d %d",
             __func__,
             ispMetaData->meas_stat.sensor_mode.exp_time,
             ispMetaData->meas_stat.sensor_mode.gain
            );
-    if (mCamIAEngine.get())
-      mCamIAEngine->mapSensorExpToHal
-      (
-          ispMetaData->meas_stat.sensor_mode.gain,
-          ispMetaData->meas_stat.sensor_mode.exp_time,
-          halMeta->exp_gain,
-          halMeta->exp_time
-      );
-    else
+    if (mCamIAEngine.get()) {
+      if (!mHdrMode) {
+        mCamIAEngine->mapSensorExpToHal
+        (
+            ispMetaData->meas_stat.sensor_mode.gain,
+            ispMetaData->meas_stat.sensor_mode.exp_time,
+            halMeta->exp_gain,
+            halMeta->exp_time
+        );
+      } else {
+        mCamIAEngine->mapSensorExpToHal
+        (
+            mIA_results.aec.RegHdrGains[1],
+            mIA_results.aec.RegHdrTime[1],
+            halMeta->exp_gain,
+            halMeta->exp_time
+        );
+        mCamIAEngine->mapSensorExpToHal
+        (
+            mIA_results.aec.RegHdrGains[0],
+            mIA_results.aec.RegHdrTime[0],
+            halMeta->exp_gain_l,
+            halMeta->exp_time_l
+        );
+        mCamIAEngine->mapSensorExpToHal
+        (
+            mIA_results.aec.RegHdrGains[2],
+            mIA_results.aec.RegHdrTime[2],
+            halMeta->exp_gain_s,
+            halMeta->exp_time_s
+        );
+      }
+    } else
       ALOGW("%s:mCamIAEngine has been desroyed!", __func__);
     /* transfer aaa algorithm results */
 
@@ -2059,36 +2251,36 @@ void CamIsp11CtrItf::transDrvMetaDataToHal
         mIspCfg.flt_denoise_level;
     halMeta->flt.sharp_level =
         mIspCfg.flt_sharp_level;
-  halMeta->ctk.coeff0 =
-    UtlFixToFloat_S0407(ispMetaData->other_cfg.ctk_config.coeff0);
-  halMeta->ctk.coeff1 =
-    UtlFixToFloat_S0407(ispMetaData->other_cfg.ctk_config.coeff1);
-  halMeta->ctk.coeff2 =
-    UtlFixToFloat_S0407(ispMetaData->other_cfg.ctk_config.coeff2);
-  halMeta->ctk.coeff3 =
-    UtlFixToFloat_S0407(ispMetaData->other_cfg.ctk_config.coeff3);
-  halMeta->ctk.coeff4 =
-    UtlFixToFloat_S0407(ispMetaData->other_cfg.ctk_config.coeff4);
-  halMeta->ctk.coeff5 =
-    UtlFixToFloat_S0407(ispMetaData->other_cfg.ctk_config.coeff5);
-  halMeta->ctk.coeff6 =
-    UtlFixToFloat_S0407(ispMetaData->other_cfg.ctk_config.coeff6);
-  halMeta->ctk.coeff7 =
-    UtlFixToFloat_S0407(ispMetaData->other_cfg.ctk_config.coeff7);
-  halMeta->ctk.coeff8 =
-    UtlFixToFloat_S0407(ispMetaData->other_cfg.ctk_config.coeff8);
+    halMeta->ctk.coeff0 =
+      UtlFixToFloat_S0407(ispMetaData->other_cfg.ctk_config.coeff0);
+    halMeta->ctk.coeff1 =
+      UtlFixToFloat_S0407(ispMetaData->other_cfg.ctk_config.coeff1);
+    halMeta->ctk.coeff2 =
+      UtlFixToFloat_S0407(ispMetaData->other_cfg.ctk_config.coeff2);
+    halMeta->ctk.coeff3 =
+      UtlFixToFloat_S0407(ispMetaData->other_cfg.ctk_config.coeff3);
+    halMeta->ctk.coeff4 =
+      UtlFixToFloat_S0407(ispMetaData->other_cfg.ctk_config.coeff4);
+    halMeta->ctk.coeff5 =
+      UtlFixToFloat_S0407(ispMetaData->other_cfg.ctk_config.coeff5);
+    halMeta->ctk.coeff6 =
+      UtlFixToFloat_S0407(ispMetaData->other_cfg.ctk_config.coeff6);
+    halMeta->ctk.coeff7 =
+      UtlFixToFloat_S0407(ispMetaData->other_cfg.ctk_config.coeff7);
+    halMeta->ctk.coeff8 =
+      UtlFixToFloat_S0407(ispMetaData->other_cfg.ctk_config.coeff8);
 
-	#if 0
+#if 0
 	halMeta->dsp_3DNR_old.Enable = 1;
-    halMeta->dsp_3DNR_old.chroma_nr_en = 1;
+	halMeta->dsp_3DNR_old.chroma_nr_en = 1;
 	halMeta->dsp_3DNR_old.chroma_nr_level = 16;
 	halMeta->dsp_3DNR_old.luma_nr_en = 1;
 	halMeta->dsp_3DNR_old.luma_nr_level = 16;
 	halMeta->dsp_3DNR_old.shp_en = 1;
 	halMeta->dsp_3DNR_old.shp_level = 16;
 	#endif
-    //dsp 3dnr ver2
-	#if 1  
+//dsp 3dnr ver2
+#if 1
 	halMeta->dsp_3DNR.luma_sp_nr_en = mIspCfg.Dsp3DnrSetConfig.luma_sp_nr_en;
 	halMeta->dsp_3DNR.luma_te_nr_en = mIspCfg.Dsp3DnrSetConfig.luma_te_nr_en;
 	halMeta->dsp_3DNR.chrm_sp_nr_en = mIspCfg.Dsp3DnrSetConfig.chrm_sp_nr_en;
@@ -2190,7 +2382,7 @@ void CamIsp11CtrItf::transDrvMetaDataToHal
               halMeta->newDsp3DNR.ynr.ynr_spat_weight,
               halMeta->newDsp3DNR.uvnr.uvnr_weight,
               halMeta->newDsp3DNR.sharp.sharp_weight);
-	
+
     memcpy(halMeta->enabled, mIspCfg.enabled, sizeof(mIspCfg.enabled));
     //map wdr info
     halMeta->wdr.wdr_enable = mIspCfg.enabled[HAL_ISP_WDR_ID];
@@ -2258,46 +2450,46 @@ void CamIsp11CtrItf::transDrvMetaDataToHal
             (ispMetaData->other_cfg.wdr_config.c_wdr[regi]) & 0xffff;
     }
 
-	//lsc
-	halMeta->lsc.lsc_enable = mIspCfg.enabled[HAL_ISP_LSC_ID];
-	int maxChannel = 0;
-	int maxValue = 0;
-	if(mIspCfg.lsc_config.r_data_tbl[0] > maxValue){
-		maxChannel = 0;
-		maxValue =  mIspCfg.lsc_config.r_data_tbl[0];
-	}
-	if(mIspCfg.lsc_config.gr_data_tbl[0] > maxValue){
-		maxChannel = 1;
-		maxValue =  mIspCfg.lsc_config.gr_data_tbl[0];
-	}
-	if(mIspCfg.lsc_config.gb_data_tbl[0] > maxValue){
-		maxChannel = 2;
-		maxValue =  mIspCfg.lsc_config.gb_data_tbl[0];
-	}
-	if(mIspCfg.lsc_config.b_data_tbl[0] > maxValue){
-		maxChannel = 3;
-		maxValue =  mIspCfg.lsc_config.b_data_tbl[0];
-	}
+    //lsc
+    halMeta->lsc.lsc_enable = mIspCfg.enabled[HAL_ISP_LSC_ID];
+    int maxChannel = 0;
+    int maxValue = 0;
+    if(mIspCfg.lsc_config.r_data_tbl[0] > maxValue){
+      maxChannel = 0;
+      maxValue =  mIspCfg.lsc_config.r_data_tbl[0];
+    }
+    if(mIspCfg.lsc_config.gr_data_tbl[0] > maxValue){
+      maxChannel = 1;
+      maxValue =  mIspCfg.lsc_config.gr_data_tbl[0];
+    }
+    if(mIspCfg.lsc_config.gb_data_tbl[0] > maxValue){
+      maxChannel = 2;
+      maxValue =  mIspCfg.lsc_config.gb_data_tbl[0];
+    }
+    if(mIspCfg.lsc_config.b_data_tbl[0] > maxValue){
+      maxChannel = 3;
+      maxValue =  mIspCfg.lsc_config.b_data_tbl[0];
+    }
 
-	if(maxChannel == 0){
-		for(int i=0; i < CIFISP_LSC_DATA_TBL_SIZE; i++)
-			halMeta->lsc.lsc_max_data_tbl[i] = mIspCfg.lsc_config.r_data_tbl[i];
-	}
+    if(maxChannel == 0){
+      for(int i=0; i < CIFISP_LSC_DATA_TBL_SIZE; i++)
+        halMeta->lsc.lsc_max_data_tbl[i] = mIspCfg.lsc_config.r_data_tbl[i];
+    }
 
-	if(maxChannel == 1){
-		for(int i=0; i < CIFISP_LSC_DATA_TBL_SIZE; i++)
-			halMeta->lsc.lsc_max_data_tbl[i] = mIspCfg.lsc_config.gr_data_tbl[i];
-	}
+    if(maxChannel == 1){
+      for(int i=0; i < CIFISP_LSC_DATA_TBL_SIZE; i++)
+        halMeta->lsc.lsc_max_data_tbl[i] = mIspCfg.lsc_config.gr_data_tbl[i];
+    }
 
-	if(maxChannel == 2){
-		for(int i=0; i < CIFISP_LSC_DATA_TBL_SIZE; i++)
-			halMeta->lsc.lsc_max_data_tbl[i] = mIspCfg.lsc_config.gb_data_tbl[i];
-	}
+    if(maxChannel == 2){
+      for(int i=0; i < CIFISP_LSC_DATA_TBL_SIZE; i++)
+        halMeta->lsc.lsc_max_data_tbl[i] = mIspCfg.lsc_config.gb_data_tbl[i];
+    }
 
-	if(maxChannel == 4){
-		for(int i=0; i < CIFISP_LSC_DATA_TBL_SIZE; i++)
-			halMeta->lsc.lsc_max_data_tbl[i] = mIspCfg.lsc_config.b_data_tbl[i];
-	}
+    if(maxChannel == 4){
+      for(int i=0; i < CIFISP_LSC_DATA_TBL_SIZE; i++)
+        halMeta->lsc.lsc_max_data_tbl[i] = mIspCfg.lsc_config.b_data_tbl[i];
+    }
 
     halMeta->lsc.data_table_cnt = CIFISP_LSC_DATA_TBL_SIZE;
     halMeta->lsc.grad_table_cnt = CIFISP_LSC_GRAD_TBL_SIZE;
@@ -2324,6 +2516,20 @@ void CamIsp11CtrItf::transDrvMetaDataToHal
     for (i = 0; i < CIFISP_GAMMA_OUT_MAX_SAMPLES; i++) {
       halMeta->goc.gamma_y[i] = ispMetaData->other_cfg.goc_config.gamma_y[i];
     }
+
+    //dsp hdrae
+    halMeta->dsp_hdrae.bayerMode = BAYER_MODE_BGGR;
+    halMeta->dsp_hdrae.gridMode = AE_MEASURE_GRID_15X15;
+    memset(&halMeta->dsp_hdrae.pWeight[0], 3, HAL_ISP_DSP_HDRAE_MAXGRIDITEMS);
+    halMeta->dsp_hdrae.histstaticMode = AE_HISTSTATICMODE_Y;
+    halMeta->dsp_hdrae.yCoeff.rCoef = 1;
+    halMeta->dsp_hdrae.yCoeff.gCoef = 1;
+    halMeta->dsp_hdrae.yCoeff.bCoef = 1;
+    halMeta->dsp_hdrae.yCoeff.offset = 0;
+    halMeta->dsp_hdrae.imgBits = 0;
+    halMeta->dsp_hdrae.width = mCamIA_DyCfg.sensor_mode.isp_input_width;
+    halMeta->dsp_hdrae.height = mCamIA_DyCfg.sensor_mode.isp_input_height;
+    halMeta->dsp_hdrae.frames = 0;
   }
 
 }
@@ -2338,6 +2544,7 @@ bool CamIsp11CtrItf::threadLoop() {
   struct CamIA10_Results ia_results = {0};
   struct CamIsp11ConfigSet isp_cfg = {0};
   VL6180x_RangeData_t range_datas;
+  bool is_gamma = false;
   
   memset(&ia_dcfg, 0, sizeof(ia_dcfg));
 //  ALOGD("%s: enter",__func__);
@@ -2353,6 +2560,13 @@ bool CamIsp11CtrItf::threadLoop() {
   }
 
   convertIspStats(mIspStats[v4l2_buf.index], &ia_stat);
+  if (mHdrMode &&
+      mIspStats[v4l2_buf.index]->meas_type & CIFISP_STAT_AUTOEXP) {
+      memcpy(isp_cfg.configs.goc_config.gamma_y,
+          mIspStats[v4l2_buf.index]->params.hdr_ae.gammaOut,
+          CIFISP_GAMMA_OUT_MAX_SAMPLES * sizeof(unsigned short));
+      is_gamma = true;
+  }
 
   //get sensor mode data
   if (ia_stat.meas_type & CAMIA10_AEC_MASK) {
@@ -2422,6 +2636,8 @@ bool CamIsp11CtrItf::threadLoop() {
   applySubDevConfig(&ia_results);
   convertIAResults(&isp_cfg, &ia_results);
   mIA_results = ia_results;
+  if (mHdrMode && !is_gamma)
+    isp_cfg.active_configs &= ~ISP_GOC_MASK;
   applyIspConfig(&isp_cfg);
 
   return true;

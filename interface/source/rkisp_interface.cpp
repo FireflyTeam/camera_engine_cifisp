@@ -210,21 +210,21 @@ int rkisp_getFps(void* &engine, HAL_FPS_INFO_t &fps)
 	}
 }
 
-int rkisp_setAeWindow(void* &engine, int left_hoff, int top_voff, int right_width, int bottom_height)
+int rkisp_setAeWindow(void* &engine, int left_hoff, int top_voff, int right_hoff, int bottom_voff)
 {
 	if (engine != NULL) {
 		rkisp_inf_t* rkisp_inf = (rkisp_inf_t*)engine;
-		return rkisp_inf->apiItf->setAeWindow(left_hoff, top_voff, right_width, bottom_height);
+		return rkisp_inf->apiItf->setAeWindow(left_hoff, top_voff, right_hoff, bottom_voff);
 	} else {
 		return -1;
 	}
 }
 
-int rkisp_getAeWindow(void* &engine, int &left_hoff, int &top_voff, int &right_width, int &bottom_height)
+int rkisp_getAeWindow(void* &engine, int &left_hoff, int &top_voff, int &right_hoff, int &bottom_voff)
 {
 	if (engine != NULL) {
 		rkisp_inf_t* rkisp_inf = (rkisp_inf_t*)engine;
-		return rkisp_inf->apiItf->getAeWindow(left_hoff, top_voff, right_width, bottom_height);
+		return rkisp_inf->apiItf->getAeWindow(left_hoff, top_voff, right_hoff, bottom_voff);
 	} else {
 		return -1;
 	}
