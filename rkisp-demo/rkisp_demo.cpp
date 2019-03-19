@@ -16,7 +16,6 @@
 #include <sys/time.h>
 #include <sys/mman.h>
 #include <sys/ioctl.h>
-#include <dlfcn.h>
 
 #include <linux/videodev2.h>
 #include "rkisp_interface.h"
@@ -25,17 +24,11 @@
 
 const char* _iq_file="/etc/cam_iq.xml";
 void* _rkisp_engine;
-typedef int (*rkisp_start_func)(void* &engine, int vidFd, const char* ispNode, const char* tuningFile);
-typedef int (*rkisp_stop_func)(void* &engine);
 
 struct RKIspFunc {
     void* cam_ra_handle;
     void* rkisp_engine_handle;
-    rkisp_start_func start_func;
-    rkisp_stop_func stop_func;
 };
-struct RKIspFunc _RKIspFunc;
-
 struct buffer {
         void *start;
         size_t length;
@@ -90,8 +83,16 @@ static int read_frame(FILE *fp)
 
         process_image(buffers[buf.index].start, buf.bytesused);
 
-        if (verbose)
-        	printf("time stamp: %ld - %ld\n", buf.timestamp.tv_sec, buf.timestamp.tv_usec);
+        if (verbose) {
+                float val = 0.0f;
+                printf("  time stamp: %ld - %ld\n", buf.timestamp.tv_sec, buf.timestamp.tv_usec);
+                rkisp_getAeMeanLuma(_rkisp_engine, val);
+                printf("Ae Mean Luma: %f\n", val);
+                rkisp_getAeGain(_rkisp_engine, val);
+                printf("     Ae Gain: %f\n", val);
+                rkisp_getAeTime(_rkisp_engine, val);
+                printf("     Ae Time: %f\n", val);
+        }
 
         if (-1 == xioctl(fd, VIDIOC_QBUF, &buf))
             errno_exit("VIDIOC_QBUF"); 
@@ -117,12 +118,8 @@ static void stop_capturing(void)
 {
         enum v4l2_buf_type type;
 
-    	if (_RKIspFunc.stop_func != NULL) {
-    	    printf ("deinit rkisp engine\n");
-    	    _RKIspFunc.stop_func(_rkisp_engine);
-    	    dlclose(_RKIspFunc.cam_ra_handle);
-    	    dlclose(_RKIspFunc.rkisp_engine_handle);
-    	}
+        if (_rkisp_engine)
+                rkisp_stop(_rkisp_engine);
 
         printf ("Call VIDIOC_STREAMOFF\n");
         type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
@@ -135,18 +132,11 @@ static void start_capturing(void)
         unsigned int i;
         enum v4l2_buf_type type;
 
-
-    	if (_RKIspFunc.start_func != NULL) {
-    	    printf ("device manager start, capture dev fd: %d\n", fd);
-    	    _RKIspFunc.start_func(_rkisp_engine, fd, "/dev/video1", _iq_file);
-    	    printf ("device manager isp_init\n");
-
-    	    if (_rkisp_engine == NULL) {
-    	        printf ("rkisp_init engine failed\n");
-    	    } else {
-    	        printf ("rkisp_init engine succeed\n");
-    	    }
-    	}
+        rkisp_start(_rkisp_engine, fd, "/dev/video1", _iq_file);
+        if (_rkisp_engine == NULL)
+                printf ("rkisp_init engine failed\n");
+        else
+                printf ("rkisp_init engine succeed\n");
 
         for (i = 0; i < n_buffers; ++i) {
                 struct v4l2_buffer buf;
@@ -276,31 +266,6 @@ static void init_device(void)
                 errno_exit("VIDIOC_S_FMT");
 
         init_mmap();
-
-	//INIT RKISP
-	_RKIspFunc.cam_ra_handle = dlopen("/usr/lib/libcam_ia.so", RTLD_LAZY | RTLD_GLOBAL);
-    	if (_RKIspFunc.cam_ra_handle == NULL) {
-    	    printf ("open /usr/lib/libcam_ia.so failed, error %s\n", dlerror());
-    	}
-	_RKIspFunc.rkisp_engine_handle = dlopen("/usr/lib/libcam_engine_cifisp.so", RTLD_LAZY | RTLD_GLOBAL);
-    	if (_RKIspFunc.rkisp_engine_handle == NULL) {
-    	    printf ("open user-defined lib(%s) failed, reason:%s", "/usr/lib/libcam_engine_cifisp.so", dlerror ());
-
-    	} else {
-    	    printf ("Load libcam_engine_cifisp.so successed\n");
-    	    _RKIspFunc.start_func=(rkisp_start_func)dlsym(_RKIspFunc.rkisp_engine_handle, "rkisp_start");
-    	    _RKIspFunc.stop_func=(rkisp_stop_func)dlsym(_RKIspFunc.rkisp_engine_handle, "rkisp_stop");
-    	    if (_RKIspFunc.start_func == NULL) {
-    	        printf ("func rkisp_start not found.");
-    	        const char *errmsg;
-    	        if ((errmsg = dlerror()) != NULL) {
-    	            printf("dlsym rkisp_start fail errmsg: %s", errmsg);
-    	        }
-    	    } else {
-    	        printf("dlsym rkisp_start success\n");
-    	    }
-    	}
-
 }
 
 static void close_device(void)
@@ -366,6 +331,9 @@ void parse_args(int argc, char **argv)
        case 'o':
            strcpy(out_file, optarg);
            break;
+       case 'v':
+           verbose = 1;
+           break;
        case '?':
        case 'p':
            printf("Usage: %s to capture cif_isp10 frames\n"
@@ -390,7 +358,6 @@ void parse_args(int argc, char **argv)
    }
 
 }
-
 
 int main(int argc, char *argv[])
 {
