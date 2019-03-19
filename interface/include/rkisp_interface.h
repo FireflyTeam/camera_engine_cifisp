@@ -228,7 +228,7 @@ int rkisp_getAeMaxExposureGain(void* &engine, float &gain);
 int rkisp_setAeMaxExposureTime(void* &engine, float time);
 int rkisp_setAeMaxExposureGain(void* &engine, float gain);
 int rkisp_getAeState(void* &engine, enum HAL_AE_STATE &ae_state);
-int rkisp_getAeMeanLuma(void* &engine, int &meanLuma);
+int rkisp_getAeMeanLuma(void* &engine, float &meanLuma);
 int rkisp_setWhiteBalance(void* &engine, HAL_WB_MODE wbMode);
 int rkisp_setAeMode(void* &engine, enum HAL_AE_OPERATION_MODE aeMode);
 int rkisp_setManualGainAndTime(void* &engine, float hal_gain, float hal_time);
