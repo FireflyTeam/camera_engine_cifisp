@@ -29,6 +29,7 @@ SUBDIRS ?=
 ifeq ($(IS_BUILD_TEST_APP),true)
 SUBDIRS += testApp
 SUBDIRS += iqCap
+SUBDIRS += convertIQ
 endif
 
 ifeq ($(IS_BUILD_DUMPSYS),true)

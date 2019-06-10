@@ -181,7 +181,11 @@ typedef struct CamIA10_AWB_Result_s {
   CamerIcAwbMeasuringConfig_t     MeasConfig;         /**< measuring config */
   Cam_Win_t           awbWin;
   uint8_t               DoorType;
+  bool                converged;
   int err_code;
+  char IllName[20];  //yamasaki
+  CamLscProfileName_t aLscpflName1;
+  CamLscProfileName_t aLscpflName2;
 } CamIA10_AWB_Result_t;
 #endif
 
@@ -227,7 +231,8 @@ int rkisp_getAeMaxExposureTime(void* &engine, float &time);
 int rkisp_getAeMaxExposureGain(void* &engine, float &gain);
 int rkisp_setAeMaxExposureTime(void* &engine, float time);
 int rkisp_setAeMaxExposureGain(void* &engine, float gain);
-int rkisp_getAeState(void* &engine, enum HAL_AE_STATE &ae_state);
+int rkisp_getAeState(void* &engine, enum HAL_3A_STATE &ae_state);
+int rkisp_getAwbState(void* &engine, enum HAL_3A_STATE &state);
 int rkisp_getAeMeanLuma(void* &engine, float &meanLuma);
 int rkisp_setWhiteBalance(void* &engine, HAL_WB_MODE wbMode);
 int rkisp_setAeMode(void* &engine, enum HAL_AE_OPERATION_MODE aeMode);

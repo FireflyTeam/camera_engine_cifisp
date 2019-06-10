@@ -667,6 +667,17 @@ int V4L2DevIoctr::setCrop(struct v4l2_crop& crop) {
   return ioctl(mDevFp, VIDIOC_S_CROP, &crop);
 }
 
+int V4L2DevIoctr::setTime(struct sensor_frame_time_s& ft) {
+  int ret = 0;
+
+  ret = ioctl(mDevFp, RK_VIDIOC_SENSOR_SET_TIME, &ft);
+
+  if (ret < 0)
+    LOGE("ERR(%s): RK_VIDIOC_SENSOR_SET_TIME failed, err: %s \n",
+         __func__, strerror(errno));
+
+  return ret;
+}
 
 RK_FRMAE_FORMAT V4L2DevIoctr::V4l2FmtToHalFmt(unsigned int v4l2fmt) {
   switch (v4l2fmt) {

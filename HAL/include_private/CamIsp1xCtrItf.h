@@ -67,6 +67,7 @@ class CamIsp1xCtrItf: public CamIspCtrItf {
   );
 
   unsigned int mSupportedSubDevs;
+  int switchColorMode(int mode);
   int switchSubDevIrCutMode(int mode);
   int mIspFd;
   void* mIspStatBuf[CAM_ISP_NUM_OF_STAT_BUFS];
@@ -221,6 +222,8 @@ class CamIsp1xCtrItf: public CamIspCtrItf {
   bool mRun3AThd;
   /* hdr mode */
   bool_t mHdrMode;
+  CamCalibDbMetaData_t mIQMeta;
+  int mLastColorMode;
  private:
 
 };

@@ -5,7 +5,7 @@
  * transcribed, or translated into any language or computer format, in any form
  * or by any means without written permission of:
  * Fuzhou Rockchip Electronics Co.Ltd .
- * 
+ *
  *
  *****************************************************************************/
 /**
@@ -654,7 +654,7 @@ typedef struct CamAwb_V11_IlluProfile_s {
   //Cam2x2FloatMatrix_t         CovarianceMatrix;       /**< */
   //Cam1x1FloatMatrix_t         GaussFactor;            /**< */
   //Cam2x1FloatMatrix_t         Threshold;              /**< */
-  
+
   /* from awb calibration data */
   Cam1x4FloatMatrix_t         referenceWBgain;        /**< */
 
@@ -700,7 +700,7 @@ typedef struct CamAwb_V10_IlluProfile_s {
   Cam2x2FloatMatrix_t         CovarianceMatrix;       /**< */
   Cam1x1FloatMatrix_t         GaussFactor;            /**< */
   Cam2x1FloatMatrix_t         Threshold;              /**< */
-  
+
   ///* from awb calibration data */
   //Cam1x4FloatMatrix_t         referenceWBgain;        /**< */
 
@@ -918,7 +918,7 @@ typedef struct CamDsp3DnrDefaultLevelSetting_s
 	unsigned char * pchrm_te_nr_level;		   // control the strength of temporal chroma denoise level
 	unsigned char shp_en;
 	unsigned char * pshp_level; 		  // control sharpness strenth
-	
+
 }CamDsp3DnrDefaultLevelSetting_t;
 
 #define CAM_DSP_3DNR_SETTING_WEIGHT_ROW_NUM  (5)
@@ -926,13 +926,13 @@ typedef struct CamDsp3DnrDefaultLevelSetting_s
 #define CAM_CALIBDB_3DNR_WEIGHT_NUM  (CAM_DSP_3DNR_SETTING_WEIGHT_ROW_NUM*CAM_DSP_3DNR_SETTING_WEIGHT_COL_NUM)
 
 
-typedef struct CamDsp3DNRLumaSetting_s{	
+typedef struct CamDsp3DNRLumaSetting_s{
 	//5x5 luma spatial weight table,8bit for the center point,6bit for the other point,
 	//low 30bit is useful in w0 w1 w3 w4,6 6 8 6 6 in w2,all these weight are int type.
 	unsigned char luma_default;      // 1 use level define,0 use those parameters below
 	unsigned char *pluma_sp_rad;      //spatial bilateral filter size
 	unsigned char *pluma_te_max_bi_num;      //temporal max bilateral frame num
-	uint8_t *pluma_weight[CAM_CALIBDB_3DNR_WEIGHT_NUM]; 
+	uint8_t *pluma_weight[CAM_CALIBDB_3DNR_WEIGHT_NUM];
 }CamDsp3DNRLumaSetting_t;
 
 typedef struct CamDsp3DNRChrmSetting_s{
@@ -962,13 +962,13 @@ typedef struct CamDsp3DNRShpSetting_s{
 typedef struct CamDsp3DNRSettingProfile_s {
 	void*                    p_next;
 	CamDsp3dnrProfileName_t name;
-	
+
 	unsigned char Enable;
     int ArraySize;
 	float *pgain_Level;
 	uint16_t *pnoise_coef_numerator;
 	uint16_t *pnoise_coef_denominator;
-    
+
 	CamDsp3DnrDefaultLevelSetting_t sDefaultLevelSetting;
 	CamDsp3DNRLumaSetting_t sLumaSetting;
 	CamDsp3DNRChrmSetting_t sChrmSetting;
@@ -1004,11 +1004,11 @@ typedef struct CamNewDsp3DNRSharpParams_s{
 typedef struct CamNewDsp3DNRProfile_s {
 	void*                    p_next;
 	CamNewDsp3dnrProfileName_t name;
-	
+
 	CamNewDsp3DNRYnrParams_t ynr;
 	CamNewDsp3DNRUvnrParams_t uvnr;
 	CamNewDsp3DNRSharpParams_t sharp;
-	
+
 	uint32_t enable_dpc;        // Set to 1 by default, enable DSP dpc algorithm
 	uint32_t reserved[4];
 
@@ -1043,7 +1043,7 @@ typedef struct CamDpfProfile_s {
   uint16_t ADPFEnable;
 
   List FilterList;
-  List Dsp3DNRSettingProfileList; 
+  List Dsp3DNRSettingProfileList;
   List newDsp3DNRProfileList;
 } CamDpfProfile_t;
 
@@ -1520,16 +1520,21 @@ typedef struct CamCalibAecHist2Hal_s{
   uint8_t   lowHistBinTh;
 }CamCalibAecHist2Hal_t;
 
+
+
 typedef struct CamCalibAecHdrCtrl_s{
   uint8_t   Enable;
   uint8_t	Mode;
   uint8_t	FrameNum;
   float	    DCG_Ratio;
-  Cam6x1FloatMatrix_t Lgains;
   Cam6x1FloatMatrix_t LExpLevel;
   Cam6x1FloatMatrix_t LSetPoint;
   Cam6x1FloatMatrix_t TargetDarkROILuma;
-  Cam6x1FloatMatrix_t Sgains;
+  float OEROILowTh;
+  float LvLowTh;
+  float LvHightTh;
+  Cam6x1FloatMatrix_t NonOEPdfTh;
+  Cam6x1FloatMatrix_t DarkPdfTh;
   Cam6x1FloatMatrix_t SExpLevel;
   Cam6x1FloatMatrix_t TargetOELuma;
   Cam6x1FloatMatrix_t SSetPoint;
@@ -1595,7 +1600,7 @@ typedef struct CamCalibAecGlobal_s {
   uint8_t       DON_Bouncing_th;
 
   CamCalibAecInterAdjust_t InterAdjustStrategy;
-  
+
   List DySetpointList;
   List ExpSeparateList;
   List OverExpControlList;
@@ -1607,7 +1612,7 @@ typedef struct CamCalibAecGlobal_s {
 } CamCalibAecGlobal_t;
 
 typedef struct CamCalibContrastAf_s {
-  uint8_t enable;  
+  uint8_t enable;
 } CamCalibContrastAf_t;
 
 typedef struct CamCalibLaserAf_s {
@@ -1617,7 +1622,7 @@ typedef struct CamCalibLaserAf_s {
 } CamCalibLaserAf_t;
 
 typedef struct CamCalibPdaf_s {
-  uint8_t enable;  
+  uint8_t enable;
 } CamCalibPdaf_t;
 
 typedef struct CamCalibAfGlobal_s {
@@ -1627,9 +1632,9 @@ typedef struct CamCalibAfGlobal_s {
 } CamCalibAfGlobal_t;
 
 typedef struct CamCalibGocProfile_s {
-  void*                    p_next;  
+  void*                    p_next;
   CamGOCProfileName_t name;
-  
+
   uint16_t enable_mode;
   uint16_t def_cfg_mode;
   uint16_t GammaY[34];
@@ -1722,7 +1727,7 @@ enum NIGHT_TRIGGER_MODE
 enum NIGHT_MODE
 {
     NORMAL = 1,
-    WHITE_BLACK = 2  
+    WHITE_BLACK = 2
 };
 
 

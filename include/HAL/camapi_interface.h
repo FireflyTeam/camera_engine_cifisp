@@ -29,7 +29,8 @@ class CamApiItf {
   virtual int GetAeMaxExposureGain(float &gain);
   virtual int SetAeMaxExposureTime(float time);
   virtual int SetAeMaxExposureGain(float gain);
-  virtual int getAeState(enum HAL_AE_STATE* ae_state);
+  virtual int getAeState(enum HAL_3A_STATE* ae_state);
+  virtual int getAwbState(enum HAL_3A_STATE* state);
 
   virtual int getAeMeanLuma(float &meanLuma);
   
@@ -52,6 +53,9 @@ class CamApiItf {
   virtual int getExposureMeterCoeff(unsigned char meter_coeff[]);
   virtual int setAeSetPoint(float set_point);
   virtual int getAeSetPoint(float &set_point);
+  //FaceAE
+  virtual int CheckFace(bool FaceExist);
+  virtual int setFaceWindow(int left_hoff, int top_voff, int right_width, int bottom_height);
 
   virtual int set3ALocks(int locks);
   virtual int get3ALocks(int& curLocks);
@@ -176,7 +180,7 @@ class CamApiItf {
   HAL_Window mAeWin;
   unsigned char mAeMeterCoeff[5 * 5];
   float mAeSetPoint;
-  enum HAL_AE_STATE mAeState;
+  enum HAL_3A_STATE mAeState;
   //af
   int mLastLensPosition;
   enum HAL_AF_MODE mAfMode;
@@ -251,6 +255,9 @@ class CamApiItf {
   struct HAL_ISP_AWB_Curve_s mAwbCurve;
   // awb wp
   struct HAL_ISP_AWB_White_Point_Set_s mAwbWpSet;
+  //FaceAE
+  bool mFaceExist;
+  HAL_Window mFaceWin;
 
   unsigned int mExposureSequence;
 

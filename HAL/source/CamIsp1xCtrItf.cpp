@@ -51,6 +51,7 @@ CamIsp1xCtrItf::CamIsp1xCtrItf(CamHwItf* camHwItf, int devFd):
   mCamHwItf = camHwItf;
   mDevFd = devFd;
   mHdrMode = BOOL_FALSE;
+  memset(&mIQMeta, 0x00, sizeof(mIQMeta));
   //ALOGD("%s: x", __func__);
 }
 
@@ -518,6 +519,7 @@ bool CamIsp1xCtrItf::configure(const Configuration& config) {
   } else
     osMutexUnlock(&mApiLock);
 
+  osMutexLock(&mApiLock);
   if ((config.awb_lsc_mode != mCamIA_DyCfg.awb_lsc_mode) ||
     memcmp(&config.awb_lsc_pfl, &mCamIA_DyCfg.awb_lsc_pfl, sizeof(config.awb_lsc_pfl))) {
     struct HAL_ISP_cfg_s cfg;
@@ -1321,6 +1323,7 @@ bool CamIsp1xCtrItf::start(bool run_3a_thd) {
   mLenPos = -1;
   mAeStableCnt = 0;
   mRun3AThd = false;
+  mLastColorMode = 1;
 
   if (run_3a_thd) {
     if (RET_SUCCESS != mISP3AThread->run("ISP3ATh", OSLAYER_THREAD_PRIO_HIGH)) {
@@ -1819,6 +1822,46 @@ void CamIsp1xCtrItf::mapSensorExpToHal
   mCamIAEngine->mapSensorExpToHal(sensorGain, sensorInttime, halGain, halInttime);
 }
 
+int CamIsp1xCtrItf::switchColorMode(int mode) {
+  struct HAL_ISP_cfg_s cfg;
+  struct HAL_ISP_ie_cfg_s ie_cfg;
+
+  if (mode != mLastColorMode)
+    mLastColorMode = mode;
+  else
+    return 0;
+
+  memset(&cfg, 0, sizeof(struct HAL_ISP_cfg_s));
+  cfg.updated_mask = 0;
+  ie_cfg.range = HAL_ISP_COLOR_RANGE_OUT_BT601;
+  cfg.ie_cfg = &ie_cfg;
+
+  if (mode == 0) {
+    //set awb to BW mode
+	mLastWbMode = mCamIA_DyCfg.awb_cfg.mode;
+    mCamIA_DyCfg.awb_cfg.mode = HAL_WB_BW;
+    //set ie mode to mono
+    osMutexLock(&mApiLock);
+    ie_cfg.mode = HAL_EFFECT_MONO;
+    cfg.updated_mask |= HAL_ISP_IE_MASK;
+    cfg.enabled[HAL_ISP_IE_ID] = HAL_ISP_ACTIVE_SETTING;
+    mCamIA_DyCfg.ie_mode = HAL_EFFECT_MONO;
+    osMutexUnlock(&mApiLock);
+  } else {
+    mCamIA_DyCfg.awb_cfg.mode = mLastWbMode;
+    //set ie mode to normal
+    osMutexLock(&mApiLock);
+    ie_cfg.mode = HAL_EFFECT_NONE;
+    cfg.updated_mask |= HAL_ISP_IE_MASK;
+    cfg.enabled[HAL_ISP_IE_ID] = HAL_ISP_ACTIVE_FALSE;
+    mCamIA_DyCfg.ie_mode = HAL_EFFECT_NONE;
+    osMutexUnlock(&mApiLock);
+  }
+
+  configureISP(&cfg);
+  return 0;
+}
+
 int CamIsp1xCtrItf::switchSubDevIrCutMode(int mode) {
 #if 1
   if (!mCamHwItf || ((mSupportedSubDevs & SUBDEV_IRCUT_MASK) == 0))
@@ -1836,77 +1879,15 @@ int CamIsp1xCtrItf::switchSubDevIrCutMode(int mode) {
   else
     return 0;
 #endif
-  struct HAL_ISP_cfg_s cfg;
-  struct HAL_ISP_ie_cfg_s ie_cfg;
-  struct HAL_ISP_goc_cfg_s goc_cfg;
-  memset(&cfg, 0, sizeof(struct HAL_ISP_cfg_s));
-  cfg.updated_mask = 0;
-  ie_cfg.range = HAL_ISP_COLOR_RANGE_OUT_BT601;
-  cfg.ie_cfg = &ie_cfg;
-  cfg.goc_cfg = &goc_cfg;
+
+  switchColorMode(mode);
   if (mode == 0) {
-    //stop awb
-    //here HAL_WB_DAYLIGHT means awb stopped
-	mLastWbMode = mCamIA_DyCfg.awb_cfg.mode;
-    mCamIA_DyCfg.awb_cfg.mode = HAL_WB_INVAL;
-    cfg.updated_mask |= HAL_ISP_CTK_MASK;
-    cfg.enabled[HAL_ISP_CTK_ID] = HAL_ISP_ACTIVE_FALSE;
-    cfg.updated_mask |= HAL_ISP_AWB_GAIN_MASK;
-    cfg.enabled[HAL_ISP_AWB_GAIN_ID] = HAL_ISP_ACTIVE_FALSE;
-    //set ie mode to mono
-    osMutexLock(&mApiLock);
-    ie_cfg.mode = HAL_EFFECT_MONO;
-    cfg.updated_mask |= HAL_ISP_IE_MASK;
-    cfg.enabled[HAL_ISP_IE_ID] = HAL_ISP_ACTIVE_SETTING;
-    mCamIA_DyCfg.ie_mode = HAL_EFFECT_MONO;
-    osMutexUnlock(&mApiLock);
-    //disable wdr
-    cfg.updated_mask |= HAL_ISP_WDR_MASK;
-    cfg.enabled[HAL_ISP_WDR_ID] = HAL_ISP_ACTIVE_FALSE;
-    //disable lsc
-    cfg.updated_mask |= HAL_ISP_LSC_MASK;
-    cfg.enabled[HAL_ISP_LSC_ID] = HAL_ISP_ACTIVE_FALSE;
-	//set gamma using wdr off gammay
-    cfg.updated_mask |= HAL_ISP_GOC_MASK;
-    cfg.enabled[HAL_ISP_GOC_ID] = HAL_ISP_ACTIVE_DEFAULT;
-	mCamIA_DyCfg.LightMode = LIGHT_MODE_NIGHT;
-	goc_cfg.light_mode = mCamIA_DyCfg.LightMode;
-	
     //close ircut
     mCamHwItf->setIrCutState(0);
-	
   } else {
-    //start awb
-    mCamIA_DyCfg.awb_cfg.mode = mLastWbMode;
-    cfg.updated_mask |= HAL_ISP_CTK_MASK;
-    cfg.enabled[HAL_ISP_CTK_ID] = HAL_ISP_ACTIVE_DEFAULT;
-    cfg.updated_mask |= HAL_ISP_AWB_GAIN_MASK;
-    cfg.enabled[HAL_ISP_AWB_GAIN_ID] = HAL_ISP_ACTIVE_DEFAULT;
-	cfg.updated_mask |= HAL_ISP_AWB_MEAS_MASK;
-    cfg.enabled[HAL_ISP_AWB_MEAS_ID] = HAL_ISP_ACTIVE_DEFAULT;
-    //set ie mode to normal
-    osMutexLock(&mApiLock);
-    ie_cfg.mode = HAL_EFFECT_NONE;
-    cfg.updated_mask |= HAL_ISP_IE_MASK;
-    cfg.enabled[HAL_ISP_IE_ID] = HAL_ISP_ACTIVE_FALSE;
-    mCamIA_DyCfg.ie_mode = HAL_EFFECT_NONE;
-    osMutexUnlock(&mApiLock);
-    //enable wdr
-    cfg.updated_mask |= HAL_ISP_WDR_MASK;
-    cfg.enabled[HAL_ISP_WDR_ID] = HAL_ISP_ACTIVE_DEFAULT;
-    //enable lsc,now this will cause fliker
-    cfg.updated_mask |= HAL_ISP_LSC_MASK;
-    cfg.enabled[HAL_ISP_LSC_ID] = HAL_ISP_ACTIVE_DEFAULT;
-	//set gamma using wdron gammaY
-    cfg.updated_mask |= HAL_ISP_GOC_MASK;
-    cfg.enabled[HAL_ISP_GOC_ID] = HAL_ISP_ACTIVE_DEFAULT;
-	mCamIA_DyCfg.LightMode = LIGHT_MODE_DAY;
-	goc_cfg.light_mode = mCamIA_DyCfg.LightMode;
     //open ircut
-    mCamHwItf->setIrCutState(1);	
+    mCamHwItf->setIrCutState(1);
   }
-
-  configureISP(&cfg);
   return 0;
 }
 

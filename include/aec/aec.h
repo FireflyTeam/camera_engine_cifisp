@@ -5,7 +5,7 @@
  * transcribed, or translated into any language or computer format, in any form
  * or by any means without written permission of:
  * Fuzhou Rockchip Electronics Co.Ltd .
- * 
+ *
  *
  *****************************************************************************/
 #ifndef __AEC_H__
@@ -41,15 +41,23 @@
 #include <common/misc.h>
 #include <common/cam_types.h>
 #include "awb/awb.h"
+/*
+ ***************** AE LIB VERSION NOTE *****************
+ * v0.1.0
+ *  - support Linear-AE/Hdr-AE
+ * v0.1.1
+ *  - modify ExposureSeperate for different Hdr-Mode
+ */
 
+#define CONFIG_AE_LIB_VERSION "v0.1.1"
 #ifdef __cplusplus
 extern "C"
 {
 #endif
 
 #define AEC_AFPS_MASK (1 << 0)
-#define AEC_EFFECT_FNUM 3
-
+#define AEC_EFFECT_FNUM 5
+//#define ZLJ_DEBUG
 /*****************************************************************************/
 /**
  * @brief   The number of mean and hist.
@@ -192,7 +200,7 @@ typedef struct AecConfig_s {
   float         AOE_Y_Min_th;
   float         AOE_Step_Inc;
   float         AOE_Step_Dec;
-  
+
   uint8_t       DON_Night_Trigger;
   uint8_t       DON_Night_Mode;
   float         DON_Day2Night_Fac_th; // yamasaki
@@ -214,7 +222,7 @@ typedef struct AecConfig_s {
   CamCalibAecHdrCtrl_t HdrCtrl;
 
   enum LIGHT_MODE LightMode;
-  
+
   int ae_bias;
   float ApiSetMaxExpTime;
   float ApiSetMaxGain;
@@ -228,7 +236,7 @@ typedef struct AecConfig_s {
  * @brief   AEC Module Hardware statistics structure
  *
  *****************************************************************************/
- 
+
 /*zlj add*/
 typedef struct Hdrae_DRIndex_res
 {

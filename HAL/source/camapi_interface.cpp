@@ -87,7 +87,7 @@ void CamApiItf::initApiItf(CamIspCtrItf* ispDev) {
   memset(&mAwbWpSet, 0, sizeof(mAwbWpSet));
   mAEManualExpTime = 0.0f;
   mAEManualExpGain = 0.0f;
-  mAeState = HAL_AE_STATE_UNSTABLE;
+  mAeState = HAL_3A_STATE_UNSTABLE;
   //ALOGD("%s: X", __func__);
 }
 
@@ -151,6 +151,9 @@ int CamApiItf::configIsp_l(struct isp_supplemental_sensor_mode_data* sensor) {
   else
     cfg.aec_cfg.api_set_fps = 0;
   cfg.aec_cfg.win = mAeWin;
+  //face ae
+  cfg.aec_cfg.facewin = mFaceWin;
+  cfg.aec_cfg.face_exist= mFaceExist;
   memcpy(cfg.aec_cfg.meter_coeff, mAeMeterCoeff, sizeof(mAeMeterCoeff));
   cfg.aec_cfg.set_point = mAeSetPoint;
   cfg.aec_cfg.aeMaxExpTime = mAEMaxExposureTime;
@@ -302,7 +305,7 @@ int CamApiItf::SetAeMaxExposureGain(float gain)
   return 0;
 }
 
-int CamApiItf::getAeState(enum HAL_AE_STATE* ae_state) {
+int CamApiItf::getAeState(enum HAL_3A_STATE* ae_state) {
   mIspDev->getAeState(ae_state);
   return 0;
 }
@@ -320,6 +323,12 @@ int CamApiItf::getAeMeanLuma(float &meanLuma)
   }
 
   meanLuma = mean;
+  return 0;
+}
+
+int CamApiItf::getAwbState(enum HAL_3A_STATE* state)
+{
+  mIspDev->getAwbState(state);
   return 0;
 }
 
@@ -545,6 +554,23 @@ int CamApiItf::getBrightness(int& brightVal)
   }
 
   return -1;
+}
+
+//FaceAE
+int CamApiItf::CheckFace(bool FaceExist) {
+  mFaceExist = FaceExist;
+  configIsp_l(NULL);
+  return 0;
+}
+
+int CamApiItf::setFaceWindow(int left_hoff, int top_voff, int right_width, int bottom_height) {
+  mFaceWin.left_hoff = left_hoff;
+  mFaceWin.top_voff = top_voff;
+  mFaceWin.right_width = right_width;
+  mFaceWin.bottom_height = bottom_height;
+
+  configIsp_l(NULL);
+  return 0;
 }
 
 //contrast

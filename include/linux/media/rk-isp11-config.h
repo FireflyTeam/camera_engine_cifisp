@@ -259,19 +259,19 @@ struct cifisp_hdrae_oneframe_result {
 	struct cifisp_hdrae_mean_meas_res mean_meas;
 };
 /*zlj add struct*/
-typedef struct cifisp_hdrae_sframe_regionmatrix_s
-{
-	unsigned int Region0[CIFISP_HDRAE_SFREGION0_NUM];
-	unsigned int Region1[CIFISP_HDRAE_SFREGION1_NUM];
-	unsigned int Region2[CIFISP_HDRAE_SFREGION2_NUM];
-	unsigned int Region3[CIFISP_HDRAE_SFREGION3_NUM];
-}cifisp_hdrae_sframe_regionmatrix_t;
+//typedef struct cifisp_hdrae_sframe_regionmatrix_s
+//{
+//	unsigned int Region0[CIFISP_HDRAE_SFREGION0_NUM];
+//	unsigned int Region1[CIFISP_HDRAE_SFREGION1_NUM];
+//	unsigned int Region2[CIFISP_HDRAE_SFREGION2_NUM];
+//	unsigned int Region3[CIFISP_HDRAE_SFREGION3_NUM];
+//}cifisp_hdrae_sframe_regionmatrix_t;
 
 struct cifisp_hdrae_OE_meas_res{
 	unsigned int OE_Pixel;
 	unsigned int SumHistPixel;
 	unsigned int SframeMaxLuma; //zlj add
-	struct cifisp_hdrae_sframe_regionmatrix_s SfRegionMatrix;
+	//struct cifisp_hdrae_sframe_regionmatrix_s SfRegionMatrix;
 };
 
 

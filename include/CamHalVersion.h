@@ -268,5 +268,18 @@ v2.0.a.0
   8. add parameter check and change param name of setAeWindow and getAeWindow;
   9. support light control in hal;
  10. support hdr mode for aec;
+v2.0.b.0
+  1. add set time ioctl interface;
+  2. fix getCameraInfos for UVC;
+  3. add missing osMutexLock;
+  4. IQ: add isp_output_type;
+  5. update Hdr-AE (CAMIAVERSION "2.0.e.0");
+  6. change loadcode CamIqData.db path to IQ/bin/;
+  7. skip 3A when app request sensor output raw;
+  8. set IQDATA_MODE to loadcode when IQ_BIN_NAME is defined;
+  9. add IQ convert tool;
+v2.0.c.0
+  1. update libcam_ia.so to v2.1.0.0;
+  2. rename iq db file;
 ***********************************************/
-#define CAMHALVERSION "2.0.a.0"
+#define CAMHALVERSION "2.0.c.0"

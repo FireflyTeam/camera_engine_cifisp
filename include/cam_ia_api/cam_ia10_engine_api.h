@@ -140,8 +140,9 @@ typedef struct CamIA10_AWB_Result_s {
   CamerIcAwbMeasuringConfig_t     MeasConfig;         /**< measuring config */
   Cam_Win_t           awbWin;
   uint8_t                 DoorType;
-  char IllName[20];  //yamasaki
+  bool                converged;
   int err_code;
+  char IllName[20];  //yamasaki
   CamLscProfileName_t aLscpflName1;
   CamLscProfileName_t aLscpflName2;
 } CamIA10_AWB_Result_t;
@@ -256,6 +257,7 @@ class CamIA10EngineItf {
   virtual RESULT getAwbWP(struct HAL_ISP_AWB_White_Point_Get_s* awb_wp_get) = 0;
   virtual RESULT getApiGocCfg(struct HAL_ISP_GOC_s* goc) = 0;
   virtual RESULT getApiCprocCfg(struct HAL_ISP_cproc_cfg_s* cproc_cfg, struct HAL_ISP_CPROC_s* cproc) = 0;
+  virtual RESULT getIQMeta(CamCalibDbMetaData_t *pMeta) = 0;
 
 };
 

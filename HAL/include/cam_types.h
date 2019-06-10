@@ -262,6 +262,7 @@ enum HAL_WB_MODE {
   HAL_WB_BEACH,
   HAL_WB_SNOW,
   HAL_WB_CANDLE,
+  HAL_WB_BW,
   HAL_WB_MAX
 };
 
@@ -289,9 +290,9 @@ enum HAL_AE_FLK_MODE {
   HAL_AE_FLK_AUTO,
 };
 
-enum HAL_AE_STATE {
-  HAL_AE_STATE_UNSTABLE = 0,
-  HAL_AE_STATE_STABLE
+enum HAL_3A_STATE {
+  HAL_3A_STATE_UNSTABLE = 0,
+  HAL_3A_STATE_STABLE
 };
 
 enum HAL_AF_MODE {
@@ -411,6 +412,8 @@ struct HAL_AecCfg {
   float aeMaxExpTime;
   float aeMaxExpGain;
   float api_set_fps;
+  bool face_exist;
+  HAL_Window facewin;
 };
 
 struct HAL_AfcType {
@@ -1006,6 +1009,7 @@ struct HAL_LIGHT_REQ {
   enum HAL_LIGHT_ID id;
   enum HAL_LIGHE_POWER power;
   enum HAL_LIGHE_CTL_MODE ctl_mode;
+  bool is_stop_ae;
   union {
     struct HAL_LIGHT_CTL_AUTO_PARA_s auto_para;
     struct HAL_LIGHT_CTL_ALTER_PARA_s alter_para;

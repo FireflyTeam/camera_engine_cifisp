@@ -315,6 +315,15 @@ CamHwItf::CamHwItf(void): m_flag_init(false) {
   //ALOGD("%s: X", __func__);
 }
 
+int CamHwItf::setTime(struct sensor_frame_time_s& ft) {
+  int ret = mSpDev->setTime(ft);
+
+  if (ret < 0)
+    LOGE("Could not set focus, error %d", ret);
+
+  return ret;
+}
+
 int CamHwItf::setFocusPos(int position) {
   int ret = mSpDev->setCtrl(V4L2_CID_FOCUS_ABSOLUTE, position);
 
@@ -589,6 +598,7 @@ int CamHwItf::reqLgtFrm(struct HAL_LIGHT_REQ& req) {
   lgt_req.id = static_cast<enum light_id_s>(req.id);
   lgt_req.power = static_cast<enum light_power_s>(req.power);
   lgt_req.ctl_mode = static_cast<enum light_ctl_mode_s>(req.ctl_mode);
+  lgt_req.is_stop_ae = req.is_stop_ae;
   if (lgt_req.ctl_mode == LIGHT_AUTO_CTL) {
     lgt_req.auto_para.is_exclusive = req.auto_para.is_exclusive;
     lgt_req.auto_para.req_delay = req.auto_para.req_delay;
@@ -758,7 +768,7 @@ int CamHwItf::getCameraInfos(struct rk_cams_dev_info* cam_infos) {
         node->input_nums++;
       }
       cifs->cif_dev_node_nums++;
-    } else if (strstr((char*)(capability.driver), "UVC")) {
+    } else if (strstr((char*)(capability.driver), "UVC") || strstr((char*)(capability.driver), "uvc")) {
       //usb dev
       struct rk_usb_cam_dev_infos* usb_cams = &cam_infos->usb_devs;
       video_node_num = usb_cams->usb_dev_node_nums;
@@ -769,7 +779,7 @@ int CamHwItf::getCameraInfos(struct rk_cams_dev_info* cam_infos) {
         video_node_input_num = node->input_nums;
         input.index = j;
         if (ioctl(fd, VIDIOC_ENUMINPUT, &input) == 0) {
-          node->input[video_node_input_num].index = j;
+          node->input[video_node_input_num].index = i; // j
           node->input[video_node_input_num].dev = node;
           node->input[video_node_input_num].type = RK_CAM_ATTACHED_TO_USB;
           strncpy(node->input[video_node_input_num].name,

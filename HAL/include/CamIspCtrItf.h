@@ -104,7 +104,8 @@ class CamIspCtrItf {
   virtual bool getMeanLuma(float* MeanLuma) = 0;
   virtual void setNightMode(bool night_mode) = 0;
   virtual void setDayNightSwitch(enum HAL_DAYNIGHT_MODE sw) = 0;
-  virtual void getAeState(enum HAL_AE_STATE* ae_state) = 0;
+  virtual void getAeState(enum HAL_3A_STATE* ae_state) = 0;
+  virtual void getAwbState(enum HAL_3A_STATE* state) = 0;
   virtual bool getIspConfig(enum HAL_ISP_SUB_MODULE_ID_e mod_id,
       bool_t& enabled, CamIspCtrItf::Configuration& cfg) = 0;
   virtual int setExposure(struct HAL_ISP_Set_Exp_s* exp) = 0;

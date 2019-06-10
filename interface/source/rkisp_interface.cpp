@@ -120,7 +120,7 @@ int rkisp_setAeMaxExposureGain(void* &engine, float gain)
 	}
 }
 
-int rkisp_getAeState(void* &engine, enum HAL_AE_STATE &ae_state)
+int rkisp_getAeState(void* &engine, enum HAL_3A_STATE &ae_state)
 {
 	if (engine != NULL) {
 		rkisp_inf_t* rkisp_inf = (rkisp_inf_t*)engine;
@@ -135,6 +135,16 @@ int rkisp_getAeMeanLuma(void* &engine, float &meanLuma)
 	if (engine != NULL) {
 		rkisp_inf_t* rkisp_inf = (rkisp_inf_t*)engine;
 		return rkisp_inf->apiItf->getAeMeanLuma(meanLuma);
+	} else {
+		return -1;
+	}
+}
+
+int rkisp_getAwbState(void* &engine, enum HAL_3A_STATE &state)
+{
+	if (engine != NULL) {
+		rkisp_inf_t* rkisp_inf = (rkisp_inf_t*)engine;
+		return rkisp_inf->apiItf->getAwbState(&state);
 	} else {
 		return -1;
 	}

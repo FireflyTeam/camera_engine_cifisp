@@ -17,6 +17,7 @@ enum HAL_WB_MODE {
   HAL_WB_BEACH,
   HAL_WB_SNOW,
   HAL_WB_CANDLE,
+  HAL_WB_BW,
   HAL_WB_MAX
 };
 
@@ -112,9 +113,9 @@ enum CAMISP_CTRL_MODE
   CAMISP_CTRL_SLAVE = 1
 };
 
-enum HAL_AE_STATE {
-  HAL_AE_STATE_UNSTABLE = 0,
-  HAL_AE_STATE_STABLE
+enum HAL_3A_STATE {
+  HAL_3A_STATE_UNSTABLE = 0,
+  HAL_3A_STATE_STABLE
 };
 
 typedef struct HAL_FPS_INFO_s {
@@ -140,7 +141,8 @@ int rkisp_getAeMaxExposureTime(void* &engine, float &time);
 int rkisp_getAeMaxExposureGain(void* &engine, float &gain);
 int rkisp_setAeMaxExposureTime(void* &engine, float time);
 int rkisp_setAeMaxExposureGain(void* &engine, float gain);
-int rkisp_getAeState(void* &engine, enum HAL_AE_STATE &ae_state);
+int rkisp_getAeState(void* &engine, enum HAL_3A_STATE &ae_state);
+int rkisp_getAwbState(void* &engine, enum HAL_3A_STATE &state);
 int rkisp_getAeMeanLuma(void* &engine, float &meanLuma);
 int rkisp_setWhiteBalance(void* &engine, HAL_WB_MODE wbMode);
 int rkisp_setAeMode(void* &engine, enum HAL_AE_OPERATION_MODE aeMode);

@@ -73,6 +73,7 @@ class CamIA10Engine: public CamIA10EngineItf {
   virtual RESULT getAwbWP(struct HAL_ISP_AWB_White_Point_Get_s* awb_wp_get);
   virtual RESULT getApiGocCfg(struct HAL_ISP_GOC_s* goc);
   virtual RESULT getApiCprocCfg(struct HAL_ISP_cproc_cfg_s* cproc_cfg, struct HAL_ISP_CPROC_s* cproc);
+  virtual RESULT getIQMeta(CamCalibDbMetaData_t *pMeta);
 
  private:
   void convertAwbResult2Cameric

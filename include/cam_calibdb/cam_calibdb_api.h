@@ -74,17 +74,6 @@ void ClearExpSeparateList(List* l);
 
 /*****************************************************************************/
 /**
- * @brief   This function clears AEC TargetMaxluma list.
- *
- * @param   l         Head to exposure separate list.
- *
- * @return  void
- *
- *****************************************************************************/
-void ClearOverExpControlList(List* l);
-
-/*****************************************************************************/
-/**
  * @brief   The function creates and initializes a CamCalibDb instance.
  *
  * @param   pConfig             Instance configuration structure.

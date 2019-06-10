@@ -752,6 +752,10 @@ int CamIsp11DevHwItf::configIsp(
       ALOGD("%s: sensor format 0x%x, don't need 3A control", __func__, sensor_config->sensor_fmt[0]);
       osMutexUnlock(&mApiLock);
       return 0;
+    } else if (frm_info.frmFmt >= HAL_FRMAE_FMT_SBGGR12) {
+      ALOGD("%s: output format 0x%x, don't need 3A control", __func__, frm_info.frmFmt);
+      osMutexUnlock(&mApiLock);
+      return 0;
     }
     if (sensor) {
       configIsp_l(sensor);

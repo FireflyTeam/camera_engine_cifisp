@@ -34,6 +34,8 @@
   _IOWR('v', BASE_VIDIOC_PRIVATE + 4, struct light_req_s)
 #define RK_VIDIOC_QUERY_LIGHT_INFO \
   _IOWR('v', BASE_VIDIOC_PRIVATE + 5, struct subdev_light_info)
+#define RK_VIDIOC_SENSOR_SET_TIME \
+  _IOWR('v', BASE_VIDIOC_PRIVATE + 6, struct sensor_frame_time_s)
 
 #define V4L2_CID_USER_RK_BASE (V4L2_CID_USER_BASE + 0x1080)
 #define RK_V4L2_CID_VBLANKING (V4L2_CID_USER_RK_BASE + 1)

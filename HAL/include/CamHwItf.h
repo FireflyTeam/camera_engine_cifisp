@@ -189,6 +189,8 @@ class CamHwItf : public CamApiItf, virtual public enable_shared_from_this<CamHwI
   virtual bool initHw(int inputId) = 0;
   virtual void deInitHw() = 0;
 
+  virtual int setTime(struct sensor_frame_time_s& ft);
+
   //ISP configure
   virtual bool configureISPModules(const void* config) { UNUSED_PARAM(config); return false;};
   virtual int setExposure(struct HAL_ISP_Set_Exp_s* exp);

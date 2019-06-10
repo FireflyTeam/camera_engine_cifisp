@@ -48,6 +48,7 @@ class V4L2DevIoctr {
   int queryCropCap(struct v4l2_cropcap& cropCap);
   int getCrop(struct v4l2_crop& crop);
   int setCrop(struct v4l2_crop& crop);
+  int setTime(struct sensor_frame_time_s& ft);
   bool error(void) const { return mError;};
   //add for V4L2_MEMORY_MMAP memory type
   virtual bool memMap(shared_ptr<BufferBase>& buffer);

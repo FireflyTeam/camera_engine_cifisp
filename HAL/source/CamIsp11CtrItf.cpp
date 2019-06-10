@@ -23,7 +23,7 @@ using namespace std;
 
 #ifdef IQDATA_LOAD_ON
 static const char gCamIqData[] = {
-#include "CamIqData.db"
+#include "../../IQ/bin/CamIqData.db"
 };
 #endif
 
@@ -169,6 +169,7 @@ bool CamIsp11CtrItf::init(const char* tuningFile,
     }
 
     mCamIAEngine->getHdrMode(&mHdrMode);
+    mCamIAEngine->getIQMeta(&mIQMeta);
 
     if (!initISPStream(ispDev)) {
       ALOGE("%s: initISPStream failed", __func__);
@@ -274,8 +275,15 @@ void CamIsp11CtrItf::setDayNightSwitch(enum HAL_DAYNIGHT_MODE sw) {
   mDayNightSwitch = sw;
 }
 
-void CamIsp11CtrItf::getAeState(enum HAL_AE_STATE* ae_state) {
+void CamIsp11CtrItf::getAeState(enum HAL_3A_STATE* ae_state) {
   *ae_state = mAeState;
+}
+
+void CamIsp11CtrItf::getAwbState(enum HAL_3A_STATE* state) {
+  if (mIA_results.awb.converged)
+    *state = HAL_3A_STATE_STABLE;
+  else
+    *state = HAL_3A_STATE_UNSTABLE;
 }
 
 bool CamIsp11CtrItf::getIspConfig(enum HAL_ISP_SUB_MODULE_ID_e mod_id,
@@ -1227,12 +1235,12 @@ bool CamIsp11CtrItf::convertIAResults(
                 ia_results->aec.meas_mode);
 
         mAeStableCnt = 0;
-        mAeState = HAL_AE_STATE_UNSTABLE;
+        mAeState = HAL_3A_STATE_UNSTABLE;
       } else {
         if (mAeStableCnt < AE_STABLE_COUNT_NUM) {
           mAeStableCnt++;
         } else {
-          mAeState = HAL_AE_STATE_STABLE;
+          mAeState = HAL_3A_STATE_STABLE;
         }
       }
       if (
@@ -2594,39 +2602,45 @@ bool CamIsp11CtrItf::threadLoop() {
 
   runIA(&ia_dcfg, &ia_stat, &ia_results);
 
-  //ircut
-  //not do this in convertIAResults, that will cause deadlock now
-  bool night_mode = mNightMode;
-  enum HAL_DAYNIGHT_MODE day_night_sw = mDayNightSwitch;
-  if (night_mode == true) {
-    int is_night = CIFISP_LS_INVAL;
-
-    switch (day_night_sw) {
-      case HAL_DAYNIGHT_DAY:
-        is_night = LIGHT_MODE_DAY;
-        break;
-      case HAL_DAYNIGHT_NIGHT:
-        is_night = LIGHT_MODE_NIGHT;
-        break;
-      default:
-        if (ia_results.aec.Night_Trigger != TRIGGER_OFF){
-          if (ia_results.aec.Night_Trigger == LIGHT_SENS)// for Light-senstive Trigger
-            is_night = mIspStats[v4l2_buf.index]->subdev_stat.ls.val;
-          else if (ia_results.aec.Night_Trigger == NO_LIGHT_SENS)// without Light-senstive Trigger
-            is_night = ia_results.aec.DON_LightMode;
-        }
-        break;
-    }
-
-    if (is_night != CIFISP_LS_INVAL){
-      if (ia_results.aec.Night_Mode == WHITE_BLACK){// This case requires switch the IR cut filter.
-        switchSubDevIrCutMode(!is_night);
-      }
-      mCamIA_DyCfg.LightMode = is_night ? LIGHT_MODE_NIGHT : LIGHT_MODE_DAY;
-    }
+  if (mIQMeta.isp_output_type == isp_gray_output_type) {
+    switchColorMode(0);
+  } else if (mIQMeta.isp_output_type == isp_color_output_type) {
+    switchColorMode(1);
   } else {
-    switchSubDevIrCutMode(1);
-    mCamIA_DyCfg.LightMode = LIGHT_MODE_DAY;
+    //ircut
+    //not do this in convertIAResults, that will cause deadlock now
+    bool night_mode = mNightMode;
+    enum HAL_DAYNIGHT_MODE day_night_sw = mDayNightSwitch;
+    if (night_mode == true) {
+      int is_night = CIFISP_LS_INVAL;
+
+      switch (day_night_sw) {
+        case HAL_DAYNIGHT_DAY:
+          is_night = LIGHT_MODE_DAY;
+          break;
+        case HAL_DAYNIGHT_NIGHT:
+          is_night = LIGHT_MODE_NIGHT;
+          break;
+        default:
+          if (ia_results.aec.Night_Trigger != TRIGGER_OFF){
+            if (ia_results.aec.Night_Trigger == LIGHT_SENS)// for Light-senstive Trigger
+              is_night = mIspStats[v4l2_buf.index]->subdev_stat.ls.val;
+            else if (ia_results.aec.Night_Trigger == NO_LIGHT_SENS)// without Light-senstive Trigger
+              is_night = ia_results.aec.DON_LightMode;
+          }
+          break;
+      }
+
+      if (is_night != CIFISP_LS_INVAL){
+        if (ia_results.aec.Night_Mode == WHITE_BLACK){// This case requires switch the IR cut filter.
+          switchSubDevIrCutMode(!is_night);
+        }
+        mCamIA_DyCfg.LightMode = is_night ? LIGHT_MODE_NIGHT : LIGHT_MODE_DAY;
+      }
+    } else {
+      switchSubDevIrCutMode(1);
+      mCamIA_DyCfg.LightMode = LIGHT_MODE_DAY;
+    }
   }
  
   //run isp manual config?will override the 3A results

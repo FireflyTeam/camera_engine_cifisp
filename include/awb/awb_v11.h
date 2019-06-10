@@ -5,7 +5,7 @@
  * transcribed, or translated into any language or computer format, in any form
  * or by any means without written permission of:
  * Fuzhou Rockchip Electronics Co.Ltd .
- * 
+ *
  *
  *****************************************************************************/
 #ifndef __AWB_V11_H__
@@ -201,6 +201,7 @@ typedef struct AwbRunningOutputResult_s {
   CamerIcAwbMeasuringConfig_t     MeasConfig;         /**< measuring config */
   Cam_Win_t           awbWin;
   uint8_t             DoorType;
+  bool                converged;
   int err_code;
   char IllName[20]; //yamasaki
   CamLscProfileName_t     aLscpflName1;
